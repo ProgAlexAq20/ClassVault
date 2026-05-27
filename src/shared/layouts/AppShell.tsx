@@ -1,10 +1,13 @@
-import { Bell, Brain, CalendarDays, CheckSquare, GraduationCap, Home, Moon, Search, Settings, Sparkles, Sun } from "lucide-react";
+import { Bell, Brain, CalendarDays, CheckSquare, GraduationCap, Home, Moon, Search, Settings, Sparkles, Sun, Plus, Zap, Clock } from "lucide-react";
+import { useState } from "react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Logo } from "@/shared/components/Logo";
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/shared/components/ui/dialog";
 import { AppRoute, useNavigationStore } from "@/shared/store/navigation.store";
 import { useThemeStore } from "@/shared/store/theme.store";
 import { useVaultDataStore } from "@/shared/store/vault-data.store";
+import { useAuthStore } from "@/modules/auth/store/auth.store";
 import { cn } from "@/shared/utils/cn";
 
 const navItems: Array<{ route: AppRoute; label: string; icon: typeof Home }> = [
@@ -18,7 +21,50 @@ const navItems: Array<{ route: AppRoute; label: string; icon: typeof Home }> = [
 
 const mobileNavItems = navItems.filter((item) => item.route !== "settings");
 
+function StatusBadge() {
+  const { paymentStatus } = useAuthStore();
+  const setRoute = useNavigationStore((state) => state.setRoute);
+
+  if (paymentStatus === "active") {
+    return (
+      <button
+        onClick={() => setRoute("premium")}
+        className="inline-flex items-center gap-1.5 rounded-lg bg-vault-mint/10 px-3 py-1.5 text-xs font-semibold text-vault-mint hover:bg-vault-mint/20 transition"
+      >
+        <Zap className="h-3 w-3" />
+        Premium
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setRoute("premium")}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold hover:opacity-80 transition",
+        paymentStatus === "beta"
+          ? "bg-amber-400/10 text-amber-300"
+          : "bg-vault-mint/10 text-vault-mint"
+      )}
+    >
+      {paymentStatus === "beta" ? (
+        <>
+          <Sparkles className="h-3 w-3" />
+          Beta
+        </>
+      ) : (
+        <>
+          <Clock className="h-3 w-3" />
+          Pendente
+        </>
+      )}
+    </button>
+  );
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const [quickEntryOpen, setQuickEntryOpen] = useState(false);
+  const [quickEntryTitle, setQuickEntryTitle] = useState("");
   const activeRoute = useNavigationStore((state) => state.activeRoute);
   const setRoute = useNavigationStore((state) => state.setRoute);
   const theme = useThemeStore((state) => state.theme);
@@ -26,9 +72,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const addQuickEntry = useVaultDataStore((state) => state.addQuickEntry);
 
   function handleQuickEntry() {
-    const title = window.prompt("Nome da nova entrada rapida:");
-    if (!title?.trim()) return;
-    addQuickEntry(title.trim());
+    const title = quickEntryTitle.trim();
+    if (!title) return;
+    addQuickEntry(title);
+    setQuickEntryTitle("");
+    setQuickEntryOpen(false);
     setRoute("tasks");
   }
 
@@ -65,7 +113,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <p className="mt-2 text-xs leading-5 text-muted-foreground">
               Salve ideias, fotos ou entregas em segundos e organize depois.
             </p>
-            <Button className="mt-4 w-full" size="sm" onClick={handleQuickEntry}>Nova entrada</Button>
+            <Dialog open={quickEntryOpen} onOpenChange={setQuickEntryOpen}>
+              <DialogTrigger asChild>
+                <Button className="mt-4 w-full" size="sm"><Plus className="h-4 w-4" /> Nova entrada</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogTitle>Captura rápida</DialogTitle>
+                <DialogDescription>Adicione uma tarefa ou anotação rápida.</DialogDescription>
+                <div className="mt-6 space-y-4">
+                  <label className="block text-sm font-semibold">
+                    O que é?
+                    <Input
+                      value={quickEntryTitle}
+                      onChange={(e) => setQuickEntryTitle(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleQuickEntry()}
+                      placeholder="Ex: Estudar para prova"
+                      autoFocus
+                      className="mt-2"
+                    />
+                  </label>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="secondary" onClick={() => setQuickEntryOpen(false)}>Cancelar</Button>
+                    <Button onClick={handleQuickEntry} disabled={!quickEntryTitle.trim()}>Capturar</Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </aside>
 
@@ -76,6 +149,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input className="pl-9" placeholder="Buscar matérias, notas, arquivos e eventos..." />
               </div>
+              <StatusBadge />
               <Button variant="secondary" size="icon" aria-label="Notificações">
                 <Bell className="h-4 w-4" />
               </Button>

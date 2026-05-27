@@ -35,7 +35,7 @@ type VaultDataState = {
   files: VaultFile[];
   tasks: Task[];
   events: CalendarEvent[];
-  addClassroom: (input: CreateClassroomInput) => Classroom;
+  addClassroom: (input: CreateClassroomInput) => Classroom | null;
   editClassroom: (classroom: Partial<Classroom> & { id: string }) => void;
   removeClassroom: (id: string) => void;
   addNote: (input: CreateNoteInput) => Note;
@@ -58,6 +58,12 @@ export const useVaultDataStore = create<VaultDataState>()(
       tasks: [],
       events: [],
       addClassroom: ({ title, professor, color, description, categories, lessons }) => {
+        const paymentStatus = useAuthStore.getState().paymentStatus;
+        const BETA_MAX_CLASSROOMS = 3;
+        if (paymentStatus === 'beta' && get().classrooms.length >= BETA_MAX_CLASSROOMS) {
+          console.warn('Limite de matérias para modo Beta atingido');
+          return null;
+        }
         const nextCount = get().classrooms.length + 1;
         const classroom: Classroom = {
           id: crypto.randomUUID(),

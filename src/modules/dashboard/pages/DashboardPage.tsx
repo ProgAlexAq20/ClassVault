@@ -13,6 +13,7 @@ import { useTasks } from "@/modules/tasks/hooks/use-tasks";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/shared/components/ui/dialog";
+import { BetaStatusBanner } from "@/shared/components/BetaStatusBanner";
 import { useNavigationStore } from "@/shared/store/navigation.store";
 import { useVaultDataStore } from "@/shared/store/vault-data.store";
 
@@ -26,12 +27,18 @@ export function DashboardPage() {
   const { data: tasks = [] } = useTasks();
   const { data: events = [] } = useEvents();
   const openClassroom = useNavigationStore((state) => state.openClassroom);
+  const setRoute = useNavigationStore((state) => state.setRoute);
   const addClassroom = useVaultDataStore((state) => state.addClassroom);
 
   function handleCreateClassroom() {
     const title = newTitle.trim();
     if (!title) return;
     const classroom = addClassroom({ title, professor: newProfessor.trim() });
+    if (!classroom) {
+      // Beta limit hit — redirect to premium page
+      setCreateOpen(false);
+      return setRoute('premium');
+    }
     openClassroom(classroom.id);
     setNewTitle("");
     setNewProfessor("");
@@ -42,6 +49,8 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-6 pb-24 lg:pb-0">
+      <BetaStatusBanner />
+
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-vault-mint/18 via-white/[0.055] to-transparent p-6 shadow-glass">
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">

@@ -12,9 +12,11 @@ import { TaskList } from "@/modules/tasks/components/TaskList";
 import { useTasks } from "@/modules/tasks/hooks/use-tasks";
 import { useNavigationStore } from "@/shared/store/navigation.store";
 import { useVaultDataStore } from "@/shared/store/vault-data.store";
+import { BetaStatusBanner } from "@/shared/components/BetaStatusBanner";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/shared/components/ui/dialog";
+import { Input } from "@/shared/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 import type { Lesson } from "@/modules/classrooms/types/classroom.types";
 
@@ -36,6 +38,11 @@ export function ClassroomPage() {
   const scopedEvents = classroom ? events.filter((item) => item.classroomId === classroom.id) : [];
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [noteTitle, setNoteTitle] = useState("");
+  const [notePreview, setNotePreview] = useState("");
+  const [taskTitle, setTaskTitle] = useState("");
   const [title, setTitle] = useState("");
   const [professor, setProfessor] = useState("");
   const [color, setColor] = useState("#8fce9e");
@@ -54,16 +61,18 @@ export function ClassroomPage() {
   }, [classroom]);
 
   function handleNewNote() {
-    const title = window.prompt("Titulo da nova nota:");
-    if (!title?.trim() || !classroom) return;
-    const preview = window.prompt("Primeira ideia ou resumo da nota:");
-    addNote({ classroomId: classroom.id, title: title.trim(), preview: preview?.trim() });
+    if (!noteTitle.trim() || !classroom) return;
+    addNote({ classroomId: classroom.id, title: noteTitle.trim(), preview: notePreview.trim() });
+    setNoteTitle("");
+    setNotePreview("");
+    setNoteDialogOpen(false);
   }
 
   function handleNewTask() {
-    const title = window.prompt("Nome do novo trabalho ou tarefa:");
-    if (!title?.trim() || !classroom) return;
-    addTask({ classroomId: classroom.id, title: title.trim() });
+    if (!taskTitle.trim() || !classroom) return;
+    addTask({ classroomId: classroom.id, title: taskTitle.trim() });
+    setTaskTitle("");
+    setTaskDialogOpen(false);
   }
 
   function handleSaveClassroom() {
@@ -105,6 +114,8 @@ export function ClassroomPage() {
 
   return (
     <div className="space-y-6 pb-24 lg:pb-0">
+      <BetaStatusBanner />
+
       <section className="rounded-2xl border border-white/10 bg-white/[0.055] p-6 shadow-glass backdrop-blur-2xl">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -114,8 +125,67 @@ export function ClassroomPage() {
             {classroom.description && <p className="mt-4 text-sm leading-6 text-muted-foreground">{classroom.description}</p>}
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button onClick={handleNewNote}><NotebookPen className="h-4 w-4" /> Nota</Button>
-            <Button variant="secondary" onClick={handleNewTask}><FileText className="h-4 w-4" /> Trabalho</Button>
+            <Dialog open={noteDialogOpen} onOpenChange={setNoteDialogOpen}>
+              <DialogTrigger asChild>
+                <Button><NotebookPen className="h-4 w-4" /> Nota</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogTitle>Criar nova nota</DialogTitle>
+                <DialogDescription>Adicione uma anotação para esta matéria.</DialogDescription>
+                <div className="mt-6 space-y-4">
+                  <label className="block text-sm font-semibold">
+                    Título da nota
+                    <Input
+                      value={noteTitle}
+                      onChange={(e) => setNoteTitle(e.target.value)}
+                      placeholder="Ex: Conceitos fundamentais"
+                      autoFocus
+                      className="mt-2"
+                    />
+                  </label>
+                  <label className="block text-sm font-semibold">
+                    Resumo ou primeira ideia
+                    <textarea
+                      value={notePreview}
+                      onChange={(e) => setNotePreview(e.target.value)}
+                      placeholder="Ex: Primeira observação sobre o tema"
+                      className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm text-foreground outline-none focus:border-vault-mint"
+                      rows={3}
+                    />
+                  </label>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="secondary" onClick={() => setNoteDialogOpen(false)}>Cancelar</Button>
+                    <Button onClick={handleNewNote} disabled={!noteTitle.trim()}>Criar nota</Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Dialog open={taskDialogOpen} onOpenChange={setTaskDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="secondary"><FileText className="h-4 w-4" /> Trabalho</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogTitle>Criar novo trabalho</DialogTitle>
+                <DialogDescription>Adicione uma tarefa ou trabalho para esta matéria.</DialogDescription>
+                <div className="mt-6 space-y-4">
+                  <label className="block text-sm font-semibold">
+                    Nome da tarefa
+                    <Input
+                      value={taskTitle}
+                      onChange={(e) => setTaskTitle(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleNewTask()}
+                      placeholder="Ex: Entregar trabalho de pesquisa"
+                      autoFocus
+                      className="mt-2"
+                    />
+                  </label>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="secondary" onClick={() => setTaskDialogOpen(false)}>Cancelar</Button>
+                    <Button onClick={handleNewTask} disabled={!taskTitle.trim()}>Criar trabalho</Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
             <Dialog open={editOpen} onOpenChange={setEditOpen}>
               <DialogTrigger asChild>
                 <Button variant="ghost">Editar matéria</Button>

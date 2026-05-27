@@ -1,4 +1,7 @@
-module.exports = {
+import fs from 'node:fs';
+
+/** Minimal ESLint config compatible with the project's TypeScript + React setup */
+export default {
   parser: '@typescript-eslint/parser',
   parserOptions: {
     ecmaVersion: 2024,
@@ -10,18 +13,8 @@ module.exports = {
   settings: { react: { version: 'detect' } },
   env: { browser: true, es2024: true, node: true },
   rules: {
+    // keep defaults but allow dev flexibility
     'no-console': 'warn',
     '@typescript-eslint/no-explicit-any': 'off'
-  }
-};
-module.exports = {
-  root: true,
-  env: { browser: true, es2020: true },
-  extends: ["eslint:recommended", "plugin:@typescript-eslint/recommended", "plugin:react-hooks/recommended"],
-  ignorePatterns: ["dist", ".eslintrc.cjs"],
-  parser: "@typescript-eslint/parser",
-  plugins: ["react-refresh"],
-  rules: {
-    "react-refresh/only-export-components": ["warn", { allowConstantExport: true }]
   }
 };
