@@ -4,6 +4,7 @@ import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
 export default defineConfig({
+  base: "/ClassVault/",
   plugins: [
     react(),
     VitePWA({
@@ -17,17 +18,17 @@ export default defineConfig({
         background_color: "#0f1720",
         display: "standalone",
         orientation: "portrait-primary",
-        start_url: "/",
-        scope: "/",
+        start_url: "/ClassVault/",
+        scope: "/ClassVault/",
         icons: [
           {
-            src: "/icons/classvault.svg",
+            src: "/ClassVault/icons/classvault.svg",
             sizes: "any",
             type: "image/svg+xml",
             purpose: "any"
           },
           {
-            src: "/icons/apple-touch-icon.svg",
+            src: "/ClassVault/icons/apple-touch-icon.svg",
             sizes: "180x180",
             type: "image/svg+xml",
             purpose: "any maskable"
