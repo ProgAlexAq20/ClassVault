@@ -10,15 +10,23 @@ import { useVaultDataStore } from "@/shared/store/vault-data.store";
 import { useAuthStore } from "@/modules/auth/store/auth.store";
 import { cn } from "@/shared/utils/cn";
 
+// Lista de emails autorizados a acessar o painel admin
+const ADMIN_EMAILS = [
+  "aquino.alexandre08@gmail.com"
+  // Adicione outros emails de administradores aqui
+];
+
 const navItems: Array<{ route: AppRoute; label: string; icon: typeof Home }> = [
   { route: "dashboard", label: "Dashboard", icon: Home },
   { route: "classroom", label: "Matérias", icon: GraduationCap },
   { route: "calendar", label: "Agenda", icon: CalendarDays },
   { route: "tasks", label: "Tarefas", icon: CheckSquare },
   { route: "summaries", label: "IA", icon: Brain },
-  { route: "settings", label: "Ajustes", icon: Settings },
-  { route: "admin", label: "Admin", icon: User }
+  { route: "settings", label: "Ajustes", icon: Settings }
 ];
+
+// Itens de navegação completos (inclui Admin para administradores)
+const allNavItems = [...navItems, { route: "admin", label: "Admin", icon: User }];
 
 const mobileNavItems = navItems.filter((item) => item.route !== "settings");
 
@@ -71,6 +79,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const theme = useThemeStore((state) => state.theme);
   const toggleTheme = useThemeStore((state) => state.toggleTheme);
   const addQuickEntry = useVaultDataStore((state) => state.addQuickEntry);
+  const { user } = useAuthStore();
+  
+  // Verifica se o usuário atual tem permissão de admin
+  const isAdmin = user && ADMIN_EMAILS.includes(user.email || "");
+  
+  // Usa todos os itens de navegação (incluindo Admin) se for administrador
+  const displayNavItems = isAdmin ? allNavItems : navItems;
 
   function handleQuickEntry() {
     const title = quickEntryTitle.trim();
@@ -87,13 +102,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <aside className="hidden w-72 shrink-0 border-r border-border bg-vault-ink/55 px-5 py-6 backdrop-blur-2xl light:bg-white/85 lg:block">
           <Logo />
           <nav className="mt-9 space-y-1">
-            {navItems.map((item) => {
+            {displayNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeRoute === item.route;
               return (
                 <button
                   key={item.route}
-                  onClick={() => setRoute(item.route)}
+                  onClick={() => setRoute(item.route as AppRoute)}
                   className={cn(
                     "focus-ring flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-sm font-medium transition",
                     isActive ? "bg-primary text-primary-foreground shadow-glow" : "text-muted-foreground hover:bg-white/8 hover:text-foreground"

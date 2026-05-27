@@ -1,11 +1,17 @@
 import { useState } from "react";
-import { CheckCircle2, Search, User, CreditCard, Clock, AlertCircle } from "lucide-react";
+import { CheckCircle2, Search, User, CreditCard, Clock, AlertCircle, Lock } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { useAuthStore } from "@/modules/auth/store/auth.store";
 import { supabase } from "@/shared/services/supabase.client";
 import type { PaymentStatus } from "@/modules/auth/types/auth.types";
+
+// Lista de emails autorizados a acessar o painel admin
+const ADMIN_EMAILS = [
+  "aquino.alexandre08@gmail.com"
+  // Adicione outros emails de administradores aqui
+];
 
 type Profile = {
   user_id: string;
@@ -17,6 +23,32 @@ type Profile = {
 export function AdminPage() {
   const { user } = useAuthStore();
   const [searchEmail, setSearchEmail] = useState("");
+  
+  // Verifica se o usuário atual tem permissão de admin
+  const isAdmin = user && ADMIN_EMAILS.includes(user.email || "");
+  
+  if (!isAdmin) {
+    return (
+      <div className="grid min-h-[60vh] place-items-center px-4 pb-24 text-center">
+        <Card className="max-w-3xl rounded-[2rem] border border-white/10 bg-vault-ink/50 p-10 shadow-glass">
+          <div className="space-y-4">
+            <div className="flex justify-center">
+              <Lock className="h-12 w-12 text-rose-400" />
+            </div>
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-rose-400">Acesso negado</p>
+            <h1 className="text-3xl font-extrabold">Você não tem permissão para acessar esta área.</h1>
+            <p className="text-sm leading-6 text-muted-foreground">
+              Esta página é restrita a administradores do ClassVault. Se você acredita que isso é um erro, entre em contato com o suporte.
+            </p>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Button onClick={() => window.history.back()}>Voltar</Button>
+              <Button variant="secondary" onClick={() => window.location.href = "/"}>Ir para Dashboard</Button>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
+  }
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
