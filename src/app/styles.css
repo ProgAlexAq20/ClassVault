@@ -22,6 +22,22 @@
     --radius: 0.75rem;
   }
 
+  .light {
+    --background: 150 38% 98%;
+    --foreground: 158 26% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 158 26% 8%;
+    --muted: 150 28% 94%;
+    --muted-foreground: 158 10% 38%;
+    --accent: 145 96% 89%;
+    --accent-foreground: 158 32% 12%;
+    --primary: 143 100% 61%;
+    --primary-foreground: 158 30% 6%;
+    --border: 150 22% 88%;
+    --input: 150 22% 88%;
+    --ring: 143 100% 50%;
+  }
+
   * {
     @apply border-border;
   }
@@ -34,6 +50,13 @@
       linear-gradient(135deg, #0f1720 0%, #10191e 42%, #111a15 100%);
   }
 
+  .light body {
+    background:
+      radial-gradient(circle at 12% 0%, rgba(57, 255, 136, 0.2), transparent 30%),
+      radial-gradient(circle at 90% 8%, rgba(143, 206, 158, 0.28), transparent 28%),
+      linear-gradient(135deg, #ffffff 0%, #f8fff9 45%, #eefbf2 100%);
+  }
+
   button,
   input,
   textarea {
@@ -43,7 +66,7 @@
 
 @layer components {
   .glass-panel {
-    @apply border border-white/10 bg-white/[0.055] shadow-glass backdrop-blur-2xl;
+    @apply border border-white/10 bg-white/[0.055] shadow-glass backdrop-blur-2xl light:border-emerald-200/70 light:bg-white/80 light:shadow-[0_20px_70px_rgba(15,23,32,0.08)];
   }
 
   .focus-ring {

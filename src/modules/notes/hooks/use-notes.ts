@@ -1,9 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { listRecentNotes } from "@/modules/notes/services/note.service";
+import { useVaultDataStore } from "@/shared/store/vault-data.store";
 
 export function useNotes() {
-  return useQuery({
-    queryKey: ["notes"],
-    queryFn: listRecentNotes
-  });
+  const data = useVaultDataStore((state) => state.notes);
+  return { data, isLoading: false, error: null };
 }

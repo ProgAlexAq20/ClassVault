@@ -9,14 +9,17 @@ import { useNotes } from "@/modules/notes/hooks/use-notes";
 import { SummaryStudio } from "@/modules/summaries/components/SummaryStudio";
 import { TaskList } from "@/modules/tasks/components/TaskList";
 import { useTasks } from "@/modules/tasks/hooks/use-tasks";
-import { classrooms } from "@/shared/data/mock-data";
 import { useNavigationStore } from "@/shared/store/navigation.store";
+import { useVaultDataStore } from "@/shared/store/vault-data.store";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
 
 export function ClassroomPage() {
   const selectedId = useNavigationStore((state) => state.selectedClassroomId);
+  const classrooms = useVaultDataStore((state) => state.classrooms);
+  const addNote = useVaultDataStore((state) => state.addNote);
+  const addTask = useVaultDataStore((state) => state.addTask);
   const classroom = classrooms.find((item) => item.id === selectedId) ?? classrooms[0];
   const { data: files = [] } = useFiles();
   const { data: notes = [] } = useNotes();
@@ -26,6 +29,19 @@ export function ClassroomPage() {
   const scopedNotes = notes.filter((item) => item.classroomId === classroom.id);
   const scopedTasks = tasks.filter((item) => item.classroomId === classroom.id);
   const scopedEvents = events.filter((item) => item.classroomId === classroom.id);
+
+  function handleNewNote() {
+    const title = window.prompt("Titulo da nova nota:");
+    if (!title?.trim()) return;
+    const preview = window.prompt("Primeira ideia ou resumo da nota:");
+    addNote({ classroomId: classroom.id, title: title.trim(), preview: preview?.trim() });
+  }
+
+  function handleNewTask() {
+    const title = window.prompt("Nome do novo trabalho ou tarefa:");
+    if (!title?.trim()) return;
+    addTask({ classroomId: classroom.id, title: title.trim() });
+  }
 
   return (
     <div className="space-y-6 pb-24 lg:pb-0">
@@ -37,8 +53,8 @@ export function ClassroomPage() {
             <p className="mt-2 text-muted-foreground">{classroom.professor} · Próxima aula {classroom.nextClass}</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button><NotebookPen className="h-4 w-4" /> Nota</Button>
-            <Button variant="secondary"><FileText className="h-4 w-4" /> Upload</Button>
+            <Button onClick={handleNewNote}><NotebookPen className="h-4 w-4" /> Nota</Button>
+            <Button variant="secondary" onClick={handleNewTask}><FileText className="h-4 w-4" /> Trabalho</Button>
           </div>
         </div>
       </section>

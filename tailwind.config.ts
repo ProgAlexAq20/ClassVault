@@ -32,6 +32,7 @@ export default {
           panel: "#121d22",
           soft: "#1e232b",
           mint: "#8fce9e",
+          neon: "#39ff88",
           leaf: "#66bc73",
           fog: "#dff5e5",
           silver: "#e5e7eb"
@@ -51,5 +52,10 @@ export default {
       }
     }
   },
-  plugins: [require("tailwindcss-animate")]
+  plugins: [
+    require("tailwindcss-animate"),
+    ({ addVariant }: { addVariant: (name: string, definition: string) => void }) => {
+      addVariant("light", ".light &");
+    }
+  ]
 } satisfies Config;

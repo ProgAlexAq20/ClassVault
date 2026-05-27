@@ -1,9 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { listEvents } from "@/modules/calendar/services/calendar.service";
+import { useVaultDataStore } from "@/shared/store/vault-data.store";
 
 export function useEvents() {
-  return useQuery({
-    queryKey: ["events"],
-    queryFn: listEvents
-  });
+  const data = useVaultDataStore((state) => state.events);
+  return { data, isLoading: false, error: null };
 }

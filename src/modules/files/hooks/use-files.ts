@@ -1,9 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { listRecentFiles } from "@/modules/files/services/file.service";
+import { useVaultDataStore } from "@/shared/store/vault-data.store";
 
 export function useFiles() {
-  return useQuery({
-    queryKey: ["files"],
-    queryFn: listRecentFiles
-  });
+  const data = useVaultDataStore((state) => state.files);
+  return { data, isLoading: false, error: null };
 }

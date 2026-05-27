@@ -11,6 +11,8 @@ import { TaskList } from "@/modules/tasks/components/TaskList";
 import { useTasks } from "@/modules/tasks/hooks/use-tasks";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { useNavigationStore } from "@/shared/store/navigation.store";
+import { useVaultDataStore } from "@/shared/store/vault-data.store";
 
 export function DashboardPage() {
   const { data: classrooms = [] } = useClassrooms();
@@ -18,6 +20,16 @@ export function DashboardPage() {
   const { data: notes = [] } = useNotes();
   const { data: tasks = [] } = useTasks();
   const { data: events = [] } = useEvents();
+  const openClassroom = useNavigationStore((state) => state.openClassroom);
+  const addClassroom = useVaultDataStore((state) => state.addClassroom);
+
+  function handleNewClassroom() {
+    const title = window.prompt("Nome da nova materia:");
+    if (!title?.trim()) return;
+    const professor = window.prompt("Professor ou responsavel:");
+    const classroom = addClassroom({ title: title.trim(), professor: professor?.trim() });
+    openClassroom(classroom.id);
+  }
 
   return (
     <div className="space-y-6 pb-24 lg:pb-0">
@@ -34,7 +46,7 @@ export function DashboardPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button><Plus className="h-4 w-4" /> Matéria</Button>
+              <Button onClick={handleNewClassroom}><Plus className="h-4 w-4" /> Matéria</Button>
               <Button variant="secondary"><FilePlus2 className="h-4 w-4" /> Arquivo</Button>
             </div>
           </div>

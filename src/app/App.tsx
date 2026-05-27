@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
+import { useEffect } from "react";
 import { DashboardPage } from "@/modules/dashboard/pages/DashboardPage";
 import { ClassroomPage } from "@/modules/classrooms/pages/ClassroomPage";
 import { CalendarPage } from "@/modules/calendar/pages/CalendarPage";
@@ -6,6 +7,7 @@ import { SummariesPage } from "@/modules/summaries/pages/SummariesPage";
 import { TasksPage } from "@/modules/tasks/pages/TasksPage";
 import { AppShell } from "@/shared/layouts/AppShell";
 import { useNavigationStore } from "@/shared/store/navigation.store";
+import { useThemeStore } from "@/shared/store/theme.store";
 
 const pageMap = {
   dashboard: DashboardPage,
@@ -17,7 +19,12 @@ const pageMap = {
 
 export function App() {
   const activeRoute = useNavigationStore((state) => state.activeRoute);
+  const applyTheme = useThemeStore((state) => state.applyTheme);
   const Page = pageMap[activeRoute];
+
+  useEffect(() => {
+    applyTheme();
+  }, [applyTheme]);
 
   return (
     <AppShell>

@@ -1,9 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { listTasks } from "@/modules/tasks/services/task.service";
+import { useVaultDataStore } from "@/shared/store/vault-data.store";
 
 export function useTasks() {
-  return useQuery({
-    queryKey: ["tasks"],
-    queryFn: listTasks
-  });
+  const data = useVaultDataStore((state) => state.tasks);
+  return { data, isLoading: false, error: null };
 }
