@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { DashboardPage } from "@/modules/dashboard/pages/DashboardPage";
 import { ClassroomPage } from "@/modules/classrooms/pages/ClassroomPage";
 import { CalendarPage } from "@/modules/calendar/pages/CalendarPage";
+import { PremiumPage } from "@/modules/premium/pages/PremiumPage";
 import { SummariesPage } from "@/modules/summaries/pages/SummariesPage";
 import { TasksPage } from "@/modules/tasks/pages/TasksPage";
 import { AuthPage } from "@/modules/auth/pages/AuthPage";
@@ -17,6 +18,7 @@ const pageMap = {
   dashboard: DashboardPage,
   classroom: ClassroomPage,
   calendar: CalendarPage,
+  premium: PremiumPage,
   summaries: SummariesPage,
   tasks: TasksPage,
   settings: SettingsPage

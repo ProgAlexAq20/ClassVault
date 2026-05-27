@@ -1,4 +1,5 @@
 import { CalendarDays, FilePlus2, Plus, Sparkles } from "lucide-react";
+import { useState } from "react";
 import { ClassroomCard } from "@/modules/classrooms/components/ClassroomCard";
 import { useClassrooms } from "@/modules/classrooms/hooks/use-classrooms";
 import { EventTimeline } from "@/modules/calendar/components/EventTimeline";
@@ -11,10 +12,14 @@ import { TaskList } from "@/modules/tasks/components/TaskList";
 import { useTasks } from "@/modules/tasks/hooks/use-tasks";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/shared/components/ui/dialog";
 import { useNavigationStore } from "@/shared/store/navigation.store";
 import { useVaultDataStore } from "@/shared/store/vault-data.store";
 
 export function DashboardPage() {
+  const [createOpen, setCreateOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newProfessor, setNewProfessor] = useState("");
   const { data: classrooms = [] } = useClassrooms();
   const { data: files = [] } = useFiles();
   const { data: notes = [] } = useNotes();
@@ -23,13 +28,17 @@ export function DashboardPage() {
   const openClassroom = useNavigationStore((state) => state.openClassroom);
   const addClassroom = useVaultDataStore((state) => state.addClassroom);
 
-  function handleNewClassroom() {
-    const title = window.prompt("Nome da nova materia:");
-    if (!title?.trim()) return;
-    const professor = window.prompt("Professor ou responsavel:");
-    const classroom = addClassroom({ title: title.trim(), professor: professor?.trim() });
+  function handleCreateClassroom() {
+    const title = newTitle.trim();
+    if (!title) return;
+    const classroom = addClassroom({ title, professor: newProfessor.trim() });
     openClassroom(classroom.id);
+    setNewTitle("");
+    setNewProfessor("");
+    setCreateOpen(false);
   }
+
+  const hasClassrooms = classrooms.length > 0;
 
   return (
     <div className="space-y-6 pb-24 lg:pb-0">
@@ -46,7 +55,39 @@ export function DashboardPage() {
               </p>
             </div>
             <div className="flex gap-2">
-              <Button onClick={handleNewClassroom}><Plus className="h-4 w-4" /> Matéria</Button>
+              <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+                <DialogTrigger asChild>
+                  <Button><Plus className="h-4 w-4" /> Matéria</Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogTitle>Criar nova matéria</DialogTitle>
+                  <DialogDescription>Personalize o nome e o professor da sua primeira sala de aula.</DialogDescription>
+                  <div className="mt-6 space-y-4">
+                    <label className="block text-sm font-semibold">
+                      Nome da matéria
+                      <input
+                        value={newTitle}
+                        onChange={(event) => setNewTitle(event.target.value)}
+                        className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm text-foreground outline-none focus:border-vault-mint"
+                        placeholder="Ex: Física moderna"
+                      />
+                    </label>
+                    <label className="block text-sm font-semibold">
+                      Professor ou responsável
+                      <input
+                        value={newProfessor}
+                        onChange={(event) => setNewProfessor(event.target.value)}
+                        className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm text-foreground outline-none focus:border-vault-mint"
+                        placeholder="Ex: Prof. Mariana Silva"
+                      />
+                    </label>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="secondary" onClick={() => setCreateOpen(false)}>Cancelar</Button>
+                      <Button onClick={handleCreateClassroom}>Criar matéria</Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
               <Button variant="secondary"><FilePlus2 className="h-4 w-4" /> Arquivo</Button>
             </div>
           </div>
@@ -74,29 +115,40 @@ export function DashboardPage() {
           <h2 className="text-xl font-bold">Matérias</h2>
           <Button variant="ghost" size="sm">Ver todas</Button>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {classrooms.map((classroom) => <ClassroomCard key={classroom.id} classroom={classroom} />)}
-        </div>
+        {!hasClassrooms ? (
+          <Card className="rounded-3xl border border-white/10 bg-vault-ink/50 p-8 text-center shadow-glass">
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-vault-mint">Sem matérias ainda</p>
+            <h2 className="mt-4 text-3xl font-bold">Comece criando sua primeira sala de aula.</h2>
+            <p className="mt-3 text-sm leading-6 text-muted-foreground">Organize seu semestre com matérias personalizadas e mantenha todo conteúdo em um único lugar.</p>
+            <div className="mt-6 flex justify-center">
+              <Button onClick={() => setCreateOpen(true)}>Nova Matéria</Button>
+            </div>
+          </Card>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {classrooms.map((classroom) => <ClassroomCard key={classroom.id} classroom={classroom} />)}
+          </div>
+        )}
       </section>
 
       <section className="grid gap-5 xl:grid-cols-3">
         <Card>
           <CardHeader><CardTitle>Próximas entregas</CardTitle></CardHeader>
-          <CardContent><TaskList tasks={tasks} /></CardContent>
+          <CardContent>{tasks.length ? <TaskList tasks={tasks} /> : <p className="text-sm text-muted-foreground">Nenhuma tarefa adicionada ainda. Crie uma matéria para começar.</p>}</CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle>Últimos arquivos</CardTitle></CardHeader>
-          <CardContent><FileList files={files} /></CardContent>
+          <CardContent>{files.length ? <FileList files={files} /> : <p className="text-sm text-muted-foreground">Armazene documentos e anotações para acompanhar o semestre.</p>}</CardContent>
         </Card>
         <Card>
           <CardHeader><CardTitle>Agenda resumida</CardTitle><CalendarDays className="h-4 w-4 text-vault-mint" /></CardHeader>
-          <CardContent><EventTimeline events={events.slice(0, 3)} /></CardContent>
+          <CardContent>{events.length ? <EventTimeline events={events.slice(0, 3)} /> : <p className="text-sm text-muted-foreground">Sem eventos programados. Adicione aulas e prazos para aparecer aqui.</p>}</CardContent>
         </Card>
       </section>
 
       <Card>
         <CardHeader><CardTitle>Últimas anotações</CardTitle></CardHeader>
-        <CardContent><NotesList notes={notes} /></CardContent>
+        <CardContent>{notes.length ? <NotesList notes={notes} /> : <p className="text-sm text-muted-foreground">Ainda não há anotações. Crie sua primeira ideia dentro de uma sala.</p>}</CardContent>
       </Card>
     </div>
   );

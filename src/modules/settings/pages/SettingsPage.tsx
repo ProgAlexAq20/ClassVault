@@ -3,10 +3,12 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { useAuthStore } from "@/modules/auth/store/auth.store";
 import { useThemeStore } from "@/shared/store/theme.store";
+import { useNavigationStore } from "@/shared/store/navigation.store";
 
 export function SettingsPage() {
-  const { user, signOut } = useAuthStore();
+  const { user, paymentStatus, signOut } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
+  const setRoute = useNavigationStore((state) => state.setRoute);
 
   return (
     <div className="mx-auto max-w-4xl space-y-5 pb-24 lg:pb-0">
@@ -23,6 +25,17 @@ export function SettingsPage() {
           <div className="rounded-xl border border-border bg-white/[0.055] p-4 light:bg-emerald-50/70">
             <p className="text-sm text-muted-foreground">Email cadastrado</p>
             <p className="mt-1 font-semibold">{user?.email}</p>
+          </div>
+          <div className="rounded-3xl border border-white/10 bg-vault-ink/60 p-4 text-sm text-muted-foreground">
+            <p className="font-semibold">Status de acesso</p>
+            <p className="mt-1 text-sm text-foreground">{paymentStatus === "active" ? "Premium ativo" : paymentStatus === "pending" ? "Pagando - aguardando liberação" : "Beta gratuito"}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => setRoute("premium")}>Gerenciar Premium</Button>
+            <Button variant="secondary" onClick={() => void signOut()}>
+              <LogOut className="h-4 w-4" />
+              Sair da conta
+            </Button>
           </div>
           <div className="flex items-center gap-2 rounded-xl border border-vault-mint/25 bg-vault-mint/10 p-4 text-sm text-muted-foreground">
             <ShieldCheck className="h-4 w-4 text-vault-mint" />
@@ -43,18 +56,6 @@ export function SettingsPage() {
           <Button variant="secondary" onClick={toggleTheme}>
             {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             Alternar tema
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Sessão</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Button variant="secondary" onClick={() => void signOut()}>
-            <LogOut className="h-4 w-4" />
-            Sair da conta
           </Button>
         </CardContent>
       </Card>
