@@ -1,4 +1,4 @@
-import { Bell, Brain, CalendarDays, CheckSquare, GraduationCap, Home, Menu, Moon, Search, Sparkles, Sun } from "lucide-react";
+import { Bell, Brain, CalendarDays, CheckSquare, GraduationCap, Home, Moon, Search, Settings, Sparkles, Sun } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Logo } from "@/shared/components/Logo";
@@ -12,8 +12,11 @@ const navItems: Array<{ route: AppRoute; label: string; icon: typeof Home }> = [
   { route: "classroom", label: "Matérias", icon: GraduationCap },
   { route: "calendar", label: "Agenda", icon: CalendarDays },
   { route: "tasks", label: "Tarefas", icon: CheckSquare },
-  { route: "summaries", label: "IA", icon: Brain }
+  { route: "summaries", label: "IA", icon: Brain },
+  { route: "settings", label: "Ajustes", icon: Settings }
 ];
+
+const mobileNavItems = navItems.filter((item) => item.route !== "settings");
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const activeRoute = useNavigationStore((state) => state.activeRoute);
@@ -69,9 +72,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <main className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-20 border-b border-border bg-background/78 px-4 py-3 backdrop-blur-2xl sm:px-6">
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Abrir menu">
-                <Menu className="h-5 w-5" />
-              </Button>
               <div className="relative flex-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input className="pl-9" placeholder="Buscar matérias, notas, arquivos e eventos..." />
@@ -82,6 +82,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <Button variant="secondary" size="icon" onClick={toggleTheme} aria-label="Alternar tema">
                 {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
+              <Button variant="secondary" size="icon" onClick={() => setRoute("settings")} aria-label="Configurações">
+                <Settings className="h-4 w-4" />
+              </Button>
             </div>
           </header>
 
@@ -89,7 +92,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
           <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-border bg-vault-ink/90 px-2 py-2 backdrop-blur-2xl light:bg-white/90 lg:hidden">
             <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
-              {navItems.map((item) => {
+              {mobileNavItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeRoute === item.route;
                 return (
