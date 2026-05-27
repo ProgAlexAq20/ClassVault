@@ -1,0 +1,56 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 25% 9%;
+    --foreground: 140 25% 96%;
+    --card: 204 23% 12%;
+    --card-foreground: 140 25% 96%;
+    --muted: 205 18% 16%;
+    --muted-foreground: 150 12% 68%;
+    --accent: 132 36% 23%;
+    --accent-foreground: 132 70% 88%;
+    --primary: 130 42% 62%;
+    --primary-foreground: 160 20% 8%;
+    --border: 150 13% 24%;
+    --input: 150 13% 24%;
+    --ring: 130 42% 62%;
+    --radius: 0.75rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply min-h-screen bg-background text-foreground antialiased;
+    background:
+      radial-gradient(circle at 8% 0%, rgba(143, 206, 158, 0.14), transparent 32%),
+      radial-gradient(circle at 92% 12%, rgba(223, 245, 229, 0.08), transparent 30%),
+      linear-gradient(135deg, #0f1720 0%, #10191e 42%, #111a15 100%);
+  }
+
+  button,
+  input,
+  textarea {
+    font: inherit;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply border border-white/10 bg-white/[0.055] shadow-glass backdrop-blur-2xl;
+  }
+
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
