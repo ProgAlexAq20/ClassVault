@@ -14,7 +14,7 @@ const ADMIN_EMAILS = [
 ];
 
 type Profile = {
-  user_id: string;
+  id: string;
   email: string;
   payment_status: PaymentStatus;
   created_at: string;
@@ -59,18 +59,17 @@ export function AdminPage() {
     setMessage(null);
 
     try {
-      // First, find user by email in auth.users (requires admin privileges)
-      // For now, we'll search in profiles table by joining with auth
+      // Busca na tabela profiles usando o campo id (que referencia auth.users.id)
       const { data, error } = await supabase
         .from("profiles")
-        .select("user_id, payment_status, created_at")
-        .ilike("user_id", `%${searchEmail.trim()}%`);
+        .select("id, payment_status, created_at")
+        .ilike("id", `%${searchEmail.trim()}%`);
 
       if (error) throw error;
 
       // Enrich with email from auth (this is a simplified version)
       const enrichedProfiles: Profile[] = (data || []).map((p: any) => ({
-        user_id: p.user_id,
+        id: p.id,
         email: searchEmail, // Simplified - in production you'd fetch from auth.users
         payment_status: p.payment_status as PaymentStatus,
         created_at: p.created_at
@@ -95,12 +94,12 @@ export function AdminPage() {
     try {
       const { error } = await (supabase.from("profiles") as any)
         .update({ payment_status: "active" })
-        .eq("user_id", userId);
+        .eq("id", userId);
 
       if (error) throw error;
 
       setProfiles(profiles.map(p => 
-        p.user_id === userId ? { ...p, payment_status: "active" as PaymentStatus } : p
+        p.id === userId ? { ...p, payment_status: "active" as PaymentStatus } : p
       ));
       setMessage({ type: "success", text: "Conta ativada com sucesso!" });
     } catch (err: any) {
@@ -118,12 +117,12 @@ export function AdminPage() {
     try {
       const { error } = await (supabase.from("profiles") as any)
         .update({ payment_status: "beta" })
-        .eq("user_id", userId);
+        .eq("id", userId);
 
       if (error) throw error;
 
       setProfiles(profiles.map(p => 
-        p.user_id === userId ? { ...p, payment_status: "beta" as PaymentStatus } : p
+        p.id === userId ? { ...p, payment_status: "beta" as PaymentStatus } : p
       ));
       setMessage({ type: "success", text: "Conta desativada." });
     } catch (err: any) {
@@ -184,7 +183,7 @@ export function AdminPage() {
           <CardContent>
             {profiles.map((profile) => (
               <div
-                key={profile.user_id}
+                key={profile.id}
                 className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.055] p-4"
               >
                 <div className="flex items-center gap-3">
@@ -193,7 +192,7 @@ export function AdminPage() {
                   </div>
                   <div>
                     <p className="font-semibold">{profile.email}</p>
-                    <p className="text-xs text-muted-foreground">ID: {profile.user_id}</p>
+                    <p className="text-xs text-muted-foreground">ID: {profile.id}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -226,7 +225,7 @@ export function AdminPage() {
                   {profile.payment_status !== "active" ? (
                     <Button
                       size="sm"
-                      onClick={() => activatePremium(profile.user_id)}
+                      onClick={() => activatePremium(profile.id)}
                       disabled={loading}
                     >
                       <CreditCard className="h-3 w-3" />
@@ -236,7 +235,7 @@ export function AdminPage() {
                     <Button
                       size="sm"
                       variant="secondary"
-                      onClick={() => deactivatePremium(profile.user_id)}
+                      onClick={() => deactivatePremium(profile.id)}
                       disabled={loading}
                     >
                       Revogar
@@ -263,7 +262,7 @@ export function AdminPage() {
             <pre className="mt-2 rounded-xl bg-vault-ink p-3 text-xs">
 {`UPDATE profiles 
 SET payment_status = 'active' 
-WHERE user_id = 'UUID_DO_USUARIO';`}
+WHERE id = 'UUID_DO_USUARIO';`}
             </pre>
           </div>
           <div>

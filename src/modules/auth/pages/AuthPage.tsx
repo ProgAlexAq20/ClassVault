@@ -5,13 +5,14 @@ import { Card, CardContent } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { Logo } from "@/shared/components/Logo";
 import { useAuthStore } from "@/modules/auth/store/auth.store";
+import { GoogleSignInButton } from "@/modules/auth/components/GoogleSignInButton";
 import type { AuthMode } from "@/modules/auth/types/auth.types";
 
 export function AuthPage() {
   const [mode, setMode] = useState<AuthMode>("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const { loading, error, signIn, signUp } = useAuthStore();
+  const { loading, error, signIn, signUp, signInWithGoogle } = useAuthStore();
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -85,6 +86,21 @@ export function AuthPage() {
                   {mode === "signin" ? "Entrar no ClassVault" : "Criar minha conta"}
                 </Button>
               </form>
+
+              <div className="mt-6">
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-border"></div>
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-2 text-muted-foreground">ou continue com</span>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <GoogleSignInButton onClick={signInWithGoogle} disabled={loading} />
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
