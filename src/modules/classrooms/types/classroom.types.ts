@@ -10,6 +10,9 @@ export type Classroom = {
   fileCount: number;
   noteCount: number;
   taskCount: number;
+  description?: string;
+  categories?: string[];
+  lessons?: Lesson[];
 };
 
 export type Lesson = {

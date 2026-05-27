@@ -5,12 +5,16 @@ import type { Classroom } from "@/modules/classrooms/types/classroom.types";
 import type { VaultFile } from "@/modules/files/types/file.types";
 import type { Note } from "@/modules/notes/types/note.types";
 import type { Task } from "@/modules/tasks/types/task.types";
-import { classrooms, events, files, notes, tasks } from "@/shared/data/mock-data";
 import { supabase } from "@/shared/services/supabase.client";
+import { useAuthStore } from "@/modules/auth/store/auth.store";
 
 type CreateClassroomInput = {
   title: string;
   professor?: string;
+  color?: string;
+  description?: string;
+  categories?: string[];
+  lessons?: string[];
 };
 
 type CreateNoteInput = {
@@ -32,6 +36,8 @@ type VaultDataState = {
   tasks: Task[];
   events: CalendarEvent[];
   addClassroom: (input: CreateClassroomInput) => Classroom;
+  editClassroom: (classroom: Partial<Classroom> & { id: string }) => void;
+  removeClassroom: (id: string) => void;
   addNote: (input: CreateNoteInput) => Note;
   addTask: (input: CreateTaskInput) => Task;
   addQuickEntry: (title: string) => Task;
@@ -40,33 +46,44 @@ type VaultDataState = {
 
 const colors = ["#8fce9e", "#39ff88", "#b7e4c7", "#dff5e5"];
 
+const canSync = () => useAuthStore.getState().paymentStatus === "active";
+
 export const useVaultDataStore = create<VaultDataState>()(
   persist(
     (set, get) => ({
       userId: null,
-      classrooms,
-      notes,
-      files,
-      tasks,
-      events,
-      addClassroom: ({ title, professor }) => {
+      classrooms: [],
+      notes: [],
+      files: [],
+      tasks: [],
+      events: [],
+      addClassroom: ({ title, professor, color, description, categories, lessons }) => {
         const nextCount = get().classrooms.length + 1;
         const classroom: Classroom = {
           id: crypto.randomUUID(),
           title,
           code: `CV-${String(nextCount).padStart(3, "0")}`,
           professor: professor || "Professor a definir",
-          color: colors[nextCount % colors.length],
+          color: color ?? colors[nextCount % colors.length],
           icon: "graduation-cap",
           progress: 0,
           nextClass: "Sem aula marcada",
           fileCount: 0,
           noteCount: 0,
-          taskCount: 0
+          taskCount: 0,
+          description: description ?? "",
+          categories: categories ?? [],
+          lessons: (lessons ?? []).map((lessonTitle, index) => ({
+            id: crypto.randomUUID(),
+            classroomId: "",
+            title: lessonTitle,
+            startsAt: "",
+            description: ""
+          }))
         };
         set((state) => ({ classrooms: [classroom, ...state.classrooms] }));
         const userId = get().userId;
-        if (supabase && userId) {
+        if (supabase && userId && canSync()) {
           void supabase.from("classrooms").insert({
             id: classroom.id,
             user_id: userId,
@@ -74,10 +91,42 @@ export const useVaultDataStore = create<VaultDataState>()(
             code: classroom.code,
             color: classroom.color,
             icon: classroom.icon,
-            professor: classroom.professor
-          });
+            professor: classroom.professor,
+            description: classroom.description,
+            categories: classroom.categories
+          } as any);
         }
         return classroom;
+      },
+      editClassroom: (classroom) => {
+        set((state) => ({
+          classrooms: state.classrooms.map((item) =>
+            item.id === classroom.id ? { ...item, ...classroom } : item
+          )
+        }));
+        const userId = get().userId;
+        if (supabase && userId && canSync()) {
+          void supabase.from("classrooms").update({
+            title: classroom.title,
+            professor: classroom.professor,
+            color: classroom.color,
+            description: classroom.description,
+            categories: classroom.categories
+          } as any).eq("id", classroom.id);
+        }
+      },
+      removeClassroom: (id) => {
+        set((state) => ({
+          classrooms: state.classrooms.filter((item) => item.id !== id),
+          notes: state.notes.filter((item) => item.classroomId !== id),
+          tasks: state.tasks.filter((item) => item.classroomId !== id),
+          files: state.files.filter((item) => item.classroomId !== id),
+          events: state.events.filter((item) => item.classroomId !== id)
+        }));
+        const userId = get().userId;
+        if (supabase && userId && canSync()) {
+          void supabase.from("classrooms").delete().eq("id", id);
+        }
       },
       addNote: ({ classroomId, title, preview }) => {
         const note: Note = {
@@ -93,7 +142,7 @@ export const useVaultDataStore = create<VaultDataState>()(
             classroom.id === classroomId ? { ...classroom, noteCount: classroom.noteCount + 1 } : classroom
           )
         }));
-        if (supabase && get().userId) {
+        if (supabase && get().userId && canSync()) {
           void supabase.from("notes").insert({
             id: note.id,
             classroom_id: note.classroomId,
@@ -118,7 +167,7 @@ export const useVaultDataStore = create<VaultDataState>()(
             classroom.id === classroomId ? { ...classroom, taskCount: classroom.taskCount + 1 } : classroom
           )
         }));
-        if (supabase && get().userId) {
+        if (supabase && get().userId && canSync()) {
           void supabase.from("tasks").insert({
             id: task.id,
             classroom_id: task.classroomId,
@@ -146,9 +195,12 @@ export const useVaultDataStore = create<VaultDataState>()(
           supabase.from("events").select("*").order("starts_at", { ascending: true })
         ]);
 
-        if (classroomsResult.error) return;
+        if (classroomsResult.error) {
+          set({ classrooms: [], notes: [], tasks: [], files: [], events: [] });
+          return;
+        }
 
-        const remoteClassrooms: Classroom[] = (classroomsResult.data ?? []).map((item) => ({
+        const remoteClassrooms: Classroom[] = (classroomsResult.data ?? []).map((item: any) => ({
           id: item.id,
           title: item.title,
           code: item.code,
@@ -158,71 +210,12 @@ export const useVaultDataStore = create<VaultDataState>()(
           progress: 0,
           nextClass: "Sem aula marcada",
           fileCount: 0,
-          noteCount: (notesResult.data ?? []).filter((note) => note.classroom_id === item.id).length,
-          taskCount: (tasksResult.data ?? []).filter((task) => task.classroom_id === item.id).length
+          noteCount: (notesResult.data ?? []).filter((note: any) => note.classroom_id === item.id).length,
+          taskCount: (tasksResult.data ?? []).filter((task: any) => task.classroom_id === item.id).length,
+          description: item.description ?? "",
+          categories: item.categories ?? [],
+          lessons: []
         }));
-
-        if (remoteClassrooms.length === 0) {
-          const classroomIdMap = new Map(classrooms.map((classroom) => [classroom.id, crypto.randomUUID()]));
-          const seededClassrooms = classrooms.map((classroom) => ({ ...classroom, id: classroomIdMap.get(classroom.id) ?? crypto.randomUUID() }));
-          const seededNotes = notes.map((note) => ({
-            ...note,
-            id: crypto.randomUUID(),
-            classroomId: classroomIdMap.get(note.classroomId) ?? seededClassrooms[0].id
-          }));
-          const seededTasks = tasks.map((task) => ({
-            ...task,
-            id: crypto.randomUUID(),
-            classroomId: classroomIdMap.get(task.classroomId) ?? seededClassrooms[0].id
-          }));
-          const seededEvents = events.map((event) => ({
-            ...event,
-            id: crypto.randomUUID(),
-            classroomId: event.classroomId ? classroomIdMap.get(event.classroomId) : undefined
-          }));
-
-          await supabase.from("classrooms").insert(
-            seededClassrooms.map((classroom) => ({
-              id: classroom.id,
-              user_id: userId,
-              title: classroom.title,
-              code: classroom.code,
-              color: classroom.color,
-              icon: classroom.icon,
-              professor: classroom.professor
-            }))
-          );
-          await supabase.from("notes").insert(
-            seededNotes.map((note) => ({
-              id: note.id,
-              classroom_id: note.classroomId,
-              title: note.title,
-              content: note.preview
-            }))
-          );
-          await supabase.from("tasks").insert(
-            seededTasks.map((task) => ({
-              id: task.id,
-              classroom_id: task.classroomId,
-              title: task.title,
-              status: task.status,
-              priority: task.priority,
-              due_at: task.dueAt
-            }))
-          );
-          await supabase.from("events").insert(
-            seededEvents.map((event) => ({
-              id: event.id,
-              classroom_id: event.classroomId ?? null,
-              title: event.title,
-              type: event.type,
-              starts_at: event.startsAt,
-              ends_at: event.endsAt ?? null
-            }))
-          );
-          set({ classrooms: seededClassrooms, notes: seededNotes, tasks: seededTasks, events: seededEvents });
-          return;
-        }
 
         set({
           classrooms: remoteClassrooms,

@@ -1,8 +1,7 @@
-import { events } from "@/shared/data/mock-data";
 import { cn } from "@/shared/utils/cn";
 
 const days = Array.from({ length: 35 }, (_, index) => index + 1);
-const eventDays = new Set(events.map((event) => new Date(event.startsAt).getDate()));
+const eventDays = new Set<number>();
 
 export function MonthCalendar() {
   return (

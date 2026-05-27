@@ -1,4 +1,5 @@
 import { CalendarDays, FileText, LayoutDashboard, ListTodo, NotebookPen, Sparkles, Video } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { EventTimeline } from "@/modules/calendar/components/EventTimeline";
 import { useEvents } from "@/modules/calendar/hooks/use-events";
 import { FileDropzone } from "@/modules/files/components/FileDropzone";
@@ -13,34 +14,93 @@ import { useNavigationStore } from "@/shared/store/navigation.store";
 import { useVaultDataStore } from "@/shared/store/vault-data.store";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/shared/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/components/ui/tabs";
+import type { Lesson } from "@/modules/classrooms/types/classroom.types";
 
 export function ClassroomPage() {
   const selectedId = useNavigationStore((state) => state.selectedClassroomId);
   const classrooms = useVaultDataStore((state) => state.classrooms);
   const addNote = useVaultDataStore((state) => state.addNote);
   const addTask = useVaultDataStore((state) => state.addTask);
-  const classroom = classrooms.find((item) => item.id === selectedId) ?? classrooms[0];
+  const editClassroom = useVaultDataStore((state) => state.editClassroom);
+  const removeClassroom = useVaultDataStore((state) => state.removeClassroom);
+  const classroom = selectedId ? classrooms.find((item) => item.id === selectedId) : undefined;
   const { data: files = [] } = useFiles();
   const { data: notes = [] } = useNotes();
   const { data: tasks = [] } = useTasks();
   const { data: events = [] } = useEvents();
-  const scopedFiles = files.filter((item) => item.classroomId === classroom.id);
-  const scopedNotes = notes.filter((item) => item.classroomId === classroom.id);
-  const scopedTasks = tasks.filter((item) => item.classroomId === classroom.id);
-  const scopedEvents = events.filter((item) => item.classroomId === classroom.id);
+  const scopedFiles = classroom ? files.filter((item) => item.classroomId === classroom.id) : [];
+  const scopedNotes = classroom ? notes.filter((item) => item.classroomId === classroom.id) : [];
+  const scopedTasks = classroom ? tasks.filter((item) => item.classroomId === classroom.id) : [];
+  const scopedEvents = classroom ? events.filter((item) => item.classroomId === classroom.id) : [];
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [professor, setProfessor] = useState("");
+  const [color, setColor] = useState("#8fce9e");
+  const [description, setDescription] = useState("");
+  const [categories, setCategories] = useState("");
+  const [lessons, setLessons] = useState("");
+
+  useEffect(() => {
+    if (!classroom) return;
+    setTitle(classroom.title);
+    setProfessor(classroom.professor);
+    setColor(classroom.color);
+    setDescription(classroom.description ?? "");
+    setCategories((classroom.categories ?? []).join(", "));
+    setLessons((classroom.lessons ?? []).map((lesson) => lesson.title).join(", "));
+  }, [classroom]);
 
   function handleNewNote() {
     const title = window.prompt("Titulo da nova nota:");
-    if (!title?.trim()) return;
+    if (!title?.trim() || !classroom) return;
     const preview = window.prompt("Primeira ideia ou resumo da nota:");
     addNote({ classroomId: classroom.id, title: title.trim(), preview: preview?.trim() });
   }
 
   function handleNewTask() {
     const title = window.prompt("Nome do novo trabalho ou tarefa:");
-    if (!title?.trim()) return;
+    if (!title?.trim() || !classroom) return;
     addTask({ classroomId: classroom.id, title: title.trim() });
+  }
+
+  function handleSaveClassroom() {
+    if (!classroom) return;
+    editClassroom({
+      id: classroom.id,
+      title: title.trim() || classroom.title,
+      professor: professor.trim() || classroom.professor,
+      color,
+      description: description.trim(),
+      categories: categories.split(",").map((item) => item.trim()).filter(Boolean)
+    });
+    setEditOpen(false);
+  }
+
+  function handleDeleteClassroom() {
+    if (!classroom) return;
+    removeClassroom(classroom.id);
+    setDeleteOpen(false);
+  }
+
+  if (!classroom) {
+    return (
+      <div className="grid min-h-[60vh] place-items-center px-4 pb-24 text-center">
+        <Card className="max-w-3xl rounded-[2rem] border border-white/10 bg-vault-ink/50 p-10 shadow-glass">
+          <div className="space-y-4">
+            <p className="text-sm font-semibold uppercase tracking-[0.22em] text-vault-mint">Sala não encontrada</p>
+            <h1 className="text-3xl font-extrabold">Nenhuma matéria selecionada</h1>
+            <p className="text-sm leading-6 text-muted-foreground">Acesse o dashboard para criar sua primeira sala de aula e manter seu semestre organizado.</p>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Button onClick={() => useNavigationStore.getState().setRoute("dashboard")}>Ir para dashboard</Button>
+              <Button variant="secondary" onClick={() => useNavigationStore.getState().setRoute("dashboard")}>Nova matéria</Button>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -51,10 +111,84 @@ export function ClassroomPage() {
             <p className="text-sm font-semibold text-vault-mint">{classroom.code}</p>
             <h1 className="mt-2 text-3xl font-extrabold tracking-normal sm:text-4xl">{classroom.title}</h1>
             <p className="mt-2 text-muted-foreground">{classroom.professor} · Próxima aula {classroom.nextClass}</p>
+            {classroom.description && <p className="mt-4 text-sm leading-6 text-muted-foreground">{classroom.description}</p>}
           </div>
           <div className="flex flex-wrap gap-2">
             <Button onClick={handleNewNote}><NotebookPen className="h-4 w-4" /> Nota</Button>
             <Button variant="secondary" onClick={handleNewTask}><FileText className="h-4 w-4" /> Trabalho</Button>
+            <Dialog open={editOpen} onOpenChange={setEditOpen}>
+              <DialogTrigger asChild>
+                <Button variant="ghost">Editar matéria</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogTitle>Editar matéria</DialogTitle>
+                <DialogDescription>Atualize nome, cor, descrição e categorias da sala.</DialogDescription>
+                <div className="mt-6 space-y-4">
+                  <label className="block text-sm font-semibold">
+                    Nome da matéria
+                    <input
+                      value={title}
+                      onChange={(event) => setTitle(event.target.value)}
+                      className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm text-foreground outline-none focus:border-vault-mint"
+                    />
+                  </label>
+                  <label className="block text-sm font-semibold">
+                    Professor
+                    <input
+                      value={professor}
+                      onChange={(event) => setProfessor(event.target.value)}
+                      className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm text-foreground outline-none focus:border-vault-mint"
+                    />
+                  </label>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="block text-sm font-semibold">
+                      Cor
+                      <input
+                        type="color"
+                        value={color}
+                        onChange={(event) => setColor(event.target.value)}
+                        className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-white/[0.06] p-0"
+                      />
+                    </label>
+                    <label className="block text-sm font-semibold">
+                      Categorias
+                      <input
+                        value={categories}
+                        onChange={(event) => setCategories(event.target.value)}
+                        className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm text-foreground outline-none focus:border-vault-mint"
+                        placeholder="Ex: Projeto, Revisão"
+                      />
+                    </label>
+                  </div>
+                  <label className="block text-sm font-semibold">
+                    Descrição
+                    <textarea
+                      value={description}
+                      onChange={(event) => setDescription(event.target.value)}
+                      className="mt-2 w-full rounded-2xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm text-foreground outline-none focus:border-vault-mint"
+                      rows={4}
+                    />
+                  </label>
+                  <div className="flex justify-between gap-2 pt-3">
+                    <Button variant="secondary" onClick={() => setEditOpen(false)}>Cancelar</Button>
+                    <Button onClick={handleSaveClassroom}>Salvar alterações</Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+            <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+              <DialogTrigger asChild>
+                <Button variant="secondary">Excluir sala</Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogTitle>Tem certeza que deseja excluir esta matéria?</DialogTitle>
+                <DialogDescription>Essa ação removerá a sala e o conteúdo vinculado localmente. Confirme apenas se tiver certeza.</DialogDescription>
+                <div className="mt-6 flex justify-end gap-3">
+                  <Button variant="secondary" onClick={() => setDeleteOpen(false)}>Cancelar</Button>
+                  <Button className="bg-rose-500 text-foreground hover:bg-rose-400" onClick={handleDeleteClassroom}>Excluir</Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </section>
@@ -71,23 +205,23 @@ export function ClassroomPage() {
         </TabsList>
 
         <TabsContent value="overview" className="grid gap-5 xl:grid-cols-3">
-          <Card><CardHeader><CardTitle>Arquivos recentes</CardTitle></CardHeader><CardContent><FileList files={scopedFiles} /></CardContent></Card>
-          <Card><CardHeader><CardTitle>Notas</CardTitle></CardHeader><CardContent><NotesList notes={scopedNotes} /></CardContent></Card>
-          <Card><CardHeader><CardTitle>Trabalhos</CardTitle></CardHeader><CardContent><TaskList tasks={scopedTasks} /></CardContent></Card>
+          <Card><CardHeader><CardTitle>Arquivos recentes</CardTitle></CardHeader><CardContent>{scopedFiles.length ? <FileList files={scopedFiles} /> : <p className="text-sm text-muted-foreground">Nenhum arquivo nesta sala.</p>}</CardContent></Card>
+          <Card><CardHeader><CardTitle>Notas</CardTitle></CardHeader><CardContent>{scopedNotes.length ? <NotesList notes={scopedNotes} /> : <p className="text-sm text-muted-foreground">Nenhuma nota criada ainda.</p>}</CardContent></Card>
+          <Card><CardHeader><CardTitle>Trabalhos</CardTitle></CardHeader><CardContent>{scopedTasks.length ? <TaskList tasks={scopedTasks} /> : <p className="text-sm text-muted-foreground">Nenhum trabalho vinculado.</p>}</CardContent></Card>
         </TabsContent>
         <TabsContent value="files" className="space-y-5"><FileDropzone /><FileList files={scopedFiles} /></TabsContent>
         <TabsContent value="lessons" className="grid gap-4 md:grid-cols-2">
-          {["Introdução", "Laboratório", "Revisão final"].map((lesson, index) => (
-            <Card key={lesson} className="p-5">
+          {((classroom.lessons?.length ? classroom.lessons : [{ id: "empty-lesson", classroomId: classroom.id, title: "Sem aulas cadastradas", startsAt: "" }]) as Lesson[]).map((lesson, index) => (
+            <Card key={lesson.id} className="p-5">
               <Video className="h-5 w-5 text-vault-mint" />
-              <h3 className="mt-4 font-semibold">Aula {index + 1}: {lesson}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">Materiais, fotos, notas e tarefas vinculadas a esta aula.</p>
+              <h3 className="mt-4 font-semibold">{lesson.title || `Aula ${index + 1}`}</h3>
+              <p className="mt-2 text-sm text-muted-foreground">{lesson.description ?? "Nenhuma descrição adicionada."}</p>
             </Card>
           ))}
         </TabsContent>
-        <TabsContent value="notes"><NotesList notes={scopedNotes} /></TabsContent>
-        <TabsContent value="tasks"><TaskList tasks={scopedTasks} /></TabsContent>
-        <TabsContent value="agenda"><EventTimeline events={scopedEvents} /></TabsContent>
+        <TabsContent value="notes">{scopedNotes.length ? <NotesList notes={scopedNotes} /> : <p className="text-sm text-muted-foreground">Crie uma nota para começar a mapear sua sala.</p>}</TabsContent>
+        <TabsContent value="tasks">{scopedTasks.length ? <TaskList tasks={scopedTasks} /> : <p className="text-sm text-muted-foreground">Sem tarefas para esta sala.</p>}</TabsContent>
+        <TabsContent value="agenda">{scopedEvents.length ? <EventTimeline events={scopedEvents} /> : <p className="text-sm text-muted-foreground">Sem eventos agendados para esta sala.</p>}</TabsContent>
         <TabsContent value="ai"><SummaryStudio /></TabsContent>
       </Tabs>
     </div>
