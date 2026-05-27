@@ -1,4 +1,4 @@
-import { Bell, Brain, CalendarDays, CheckSquare, GraduationCap, Home, Moon, Search, Settings, Sparkles, Sun, Plus, Zap, Clock } from "lucide-react";
+import { Bell, Brain, CalendarDays, CheckSquare, GraduationCap, Home, Moon, Search, Settings, Sparkles, Sun, Plus, Zap, Clock, User } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -16,7 +16,8 @@ const navItems: Array<{ route: AppRoute; label: string; icon: typeof Home }> = [
   { route: "calendar", label: "Agenda", icon: CalendarDays },
   { route: "tasks", label: "Tarefas", icon: CheckSquare },
   { route: "summaries", label: "IA", icon: Brain },
-  { route: "settings", label: "Ajustes", icon: Settings }
+  { route: "settings", label: "Ajustes", icon: Settings },
+  { route: "admin", label: "Admin", icon: User }
 ];
 
 const mobileNavItems = navItems.filter((item) => item.route !== "settings");

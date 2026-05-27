@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type AppRoute = "dashboard" | "classroom" | "calendar" | "summaries" | "tasks" | "settings" | "premium";
+export type AppRoute = "dashboard" | "classroom" | "calendar" | "summaries" | "tasks" | "settings" | "premium" | "admin";
 
 type NavigationState = {
   activeRoute: AppRoute;

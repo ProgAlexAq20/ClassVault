@@ -8,6 +8,7 @@ import { SummariesPage } from "@/modules/summaries/pages/SummariesPage";
 import { TasksPage } from "@/modules/tasks/pages/TasksPage";
 import { AuthPage } from "@/modules/auth/pages/AuthPage";
 import { SettingsPage } from "@/modules/settings/pages/SettingsPage";
+import { AdminPage } from "@/modules/admin/pages/AdminPage";
 import { AppShell } from "@/shared/layouts/AppShell";
 import { useNavigationStore } from "@/shared/store/navigation.store";
 import { useThemeStore } from "@/shared/store/theme.store";
@@ -21,7 +22,8 @@ const pageMap = {
   premium: PremiumPage,
   summaries: SummariesPage,
   tasks: TasksPage,
-  settings: SettingsPage
+  settings: SettingsPage,
+  admin: AdminPage
 };
 
 export function App() {
