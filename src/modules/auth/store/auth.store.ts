@@ -3,7 +3,7 @@ import { supabase, getEmailRedirectTo } from "@/shared/services/supabase.client"
 import type { AuthState, PaymentStatus } from "@/modules/auth/types/auth.types";
 
 type ProfileRecord = {
-  user_id: string;
+  id: string;
   payment_status: PaymentStatus;
 };
 
