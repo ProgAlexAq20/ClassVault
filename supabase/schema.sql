@@ -1,5 +1,14 @@
 create extension if not exists "uuid-ossp";
 
+create table public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text,
+  full_name text,
+  avatar_url text,
+  payment_status text not null default 'beta' check (payment_status in ('beta', 'pending', 'active')),
+  created_at timestamptz not null default now()
+);
+
 create table public.classrooms (
   id uuid primary key default uuid_generate_v4(),
   user_id uuid not null references auth.users(id) on delete cascade,
@@ -74,6 +83,7 @@ create table public.summaries (
   created_at timestamptz not null default now()
 );
 
+alter table public.profiles enable row level security;
 alter table public.classrooms enable row level security;
 alter table public.lessons enable row level security;
 alter table public.files enable row level security;
@@ -81,6 +91,12 @@ alter table public.notes enable row level security;
 alter table public.tasks enable row level security;
 alter table public.events enable row level security;
 alter table public.summaries enable row level security;
+
+create policy "Users can view own profile" on public.profiles
+  for select using (auth.uid() = id);
+
+create policy "Users can update own profile" on public.profiles
+  for update using (auth.uid() = id);
 
 create policy "Users manage own classrooms" on public.classrooms
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
@@ -108,3 +124,28 @@ create policy "Users read linked events" on public.events
 create policy "Users read linked summaries" on public.summaries
   for all using (exists (select 1 from public.classrooms c where c.id = classroom_id and c.user_id = auth.uid()))
   with check (exists (select 1 from public.classrooms c where c.id = classroom_id and c.user_id = auth.uid()));
+
+-- Function to automatically create profile when user signs up
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (
+    id,
+    email,
+    full_name,
+    avatar_url
+  )
+  values (
+    new.id,
+    new.email,
+    new.raw_user_meta_data->>'full_name',
+    new.raw_user_meta_data->>'avatar_url'
+  );
+  return new;
+end;
+$$ language plpgsql security definer;
+
+-- Trigger to call the function after user creation
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute procedure public.handle_new_user();

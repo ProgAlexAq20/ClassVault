@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { DashboardPage } from "@/modules/dashboard/pages/DashboardPage";
 import { ClassroomPage } from "@/modules/classrooms/pages/ClassroomPage";
 import { CalendarPage } from "@/modules/calendar/pages/CalendarPage";
@@ -14,6 +14,7 @@ import { useNavigationStore } from "@/shared/store/navigation.store";
 import { useThemeStore } from "@/shared/store/theme.store";
 import { useAuthStore } from "@/modules/auth/store/auth.store";
 import { useVaultDataStore } from "@/shared/store/vault-data.store";
+import { supabase } from "@/shared/services/supabase.client";
 
 const pageMap = {
   dashboard: DashboardPage,
@@ -31,7 +32,43 @@ export function App() {
   const applyTheme = useThemeStore((state) => state.applyTheme);
   const { user, loading, init } = useAuthStore();
   const loadRemoteData = useVaultDataStore((state) => state.loadRemoteData);
+  const [isProcessingCallback, setIsProcessingCallback] = useState(false);
   const Page = pageMap[activeRoute];
+
+  // Handle OAuth callback
+  useEffect(() => {
+    async function handleOAuthCallback() {
+      if (!supabase || isProcessingCallback) return;
+
+      // Check if this is an OAuth callback
+      const hash = window.location.hash;
+      const hasAuthParams = hash.includes('access_token') || hash.includes('refresh_token') || hash.includes('type=signup');
+      
+      if (hasAuthParams) {
+        setIsProcessingCallback(true);
+        try {
+          // Use the built-in session recovery from URL
+          const { data, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            console.error('OAuth callback error:', error);
+          } else if (data.session) {
+            // Successfully authenticated
+            await init();
+            // Clean URL - remove auth params but keep the path
+            const cleanUrl = window.location.pathname + window.location.search;
+            window.history.replaceState({}, document.title, cleanUrl);
+          }
+        } catch (err) {
+          console.error('Error processing OAuth callback:', err);
+        } finally {
+          setIsProcessingCallback(false);
+        }
+      }
+    }
+
+    void handleOAuthCallback();
+  }, [isProcessingCallback, init]);
 
   useEffect(() => {
     applyTheme();
@@ -45,8 +82,17 @@ export function App() {
     if (user) void loadRemoteData(user.id);
   }, [loadRemoteData, user]);
 
-  if (loading) {
-    return <div className="grid min-h-screen place-items-center text-sm text-muted-foreground">Carregando ClassVault...</div>;
+  if (loading || isProcessingCallback) {
+    return (
+      <div className="grid min-h-screen place-items-center px-4 py-10">
+        <div className="text-center space-y-4">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-vault-mint border-t-transparent" />
+          <p className="text-sm text-muted-foreground">
+            {isProcessingCallback ? 'Conectando sua conta...' : 'Carregando ClassVault...'}
+          </p>
+        </div>
+      </div>
+    );
   }
 
   if (!user) return <AuthPage />;

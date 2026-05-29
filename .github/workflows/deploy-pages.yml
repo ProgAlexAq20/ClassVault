@@ -20,6 +20,7 @@ jobs:
     env:
       VITE_SUPABASE_URL: https://mwsahlpckriohtapdlqq.supabase.co
       VITE_SUPABASE_ANON_KEY: sb_publishable_kcFyOx3xBY2e0b-hlxWpXQ_vHNLtpGC
+      VITE_APP_URL: https://progalexaq20.github.io/ClassVault
     steps:
       - name: Checkout
         uses: actions/checkout@v4
