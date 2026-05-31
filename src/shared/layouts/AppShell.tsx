@@ -10,12 +10,6 @@ import { useVaultDataStore } from "@/shared/store/vault-data.store";
 import { useAuthStore } from "@/modules/auth/store/auth.store";
 import { cn } from "@/shared/utils/cn";
 
-// Lista de emails autorizados a acessar o painel admin
-const ADMIN_EMAILS = [
-  "aquino.alexandre08@gmail.com"
-  // Adicione outros emails de administradores aqui
-];
-
 const navItems: Array<{ route: AppRoute; label: string; icon: typeof Home }> = [
   { route: "dashboard", label: "Dashboard", icon: Home },
   { route: "classroom", label: "Matérias", icon: GraduationCap },
@@ -79,21 +73,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const theme = useThemeStore((state) => state.theme);
   const toggleTheme = useThemeStore((state) => state.toggleTheme);
   const addQuickEntry = useVaultDataStore((state) => state.addQuickEntry);
-  const { user } = useAuthStore();
-  
-  // Verifica se o usuário atual tem permissão de admin
-  const isAdmin = user && ADMIN_EMAILS.includes(user.email || "");
+  const { isAdmin } = useAuthStore();
   
   // Usa todos os itens de navegação (incluindo Admin) se for administrador
   const displayNavItems = isAdmin ? allNavItems : navItems;
 
-  function handleQuickEntry() {
+  async function handleQuickEntry() {
     const title = quickEntryTitle.trim();
     if (!title) return;
-    addQuickEntry(title);
-    setQuickEntryTitle("");
-    setQuickEntryOpen(false);
-    setRoute("tasks");
+    try {
+      const task = await addQuickEntry(title);
+      if (!task) return;
+      setQuickEntryTitle("");
+      setQuickEntryOpen(false);
+      setRoute("tasks");
+    } catch {
+      // The store logs and exposes the sync error.
+    }
   }
 
   return (

@@ -16,11 +16,15 @@ export function AuthPage() {
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
-    if (mode === "signin") {
-      await signIn(email, password);
-      return;
+    try {
+      if (mode === "signin") {
+        await signIn(email, password);
+        return;
+      }
+      await signUp(email, password);
+    } catch {
+      // The auth store exposes the user-facing error.
     }
-    await signUp(email, password);
   }
 
   return (

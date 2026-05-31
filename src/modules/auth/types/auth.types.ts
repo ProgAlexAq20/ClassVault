@@ -8,6 +8,7 @@ export type AuthState = {
   loading: boolean;
   error: string | null;
   paymentStatus: PaymentStatus;
+  isAdmin: boolean;
   init: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;

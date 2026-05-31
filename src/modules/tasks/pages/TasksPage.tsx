@@ -18,12 +18,17 @@ export function TasksPage() {
   const doing = tasks.filter((task) => task.status === "doing");
   const done = tasks.filter((task) => task.status === "done");
 
-  function handleNewTask() {
+  async function handleNewTask() {
     const title = newTaskTitle.trim();
-    if (!title) return;
-    addTask({ classroomId: classrooms[0]?.id ?? "inbox", title });
-    setNewTaskTitle("");
-    setNewTaskOpen(false);
+    const classroomId = classrooms[0]?.id;
+    if (!title || !classroomId) return;
+    try {
+      await addTask({ classroomId, title });
+      setNewTaskTitle("");
+      setNewTaskOpen(false);
+    } catch {
+      // The store logs and exposes the sync error.
+    }
   }
 
   return (

@@ -25,6 +25,7 @@ export function ClassroomPage() {
   const classrooms = useVaultDataStore((state) => state.classrooms);
   const addNote = useVaultDataStore((state) => state.addNote);
   const addTask = useVaultDataStore((state) => state.addTask);
+  const addFile = useVaultDataStore((state) => state.addFile);
   const editClassroom = useVaultDataStore((state) => state.editClassroom);
   const removeClassroom = useVaultDataStore((state) => state.removeClassroom);
   const classroom = selectedId ? classrooms.find((item) => item.id === selectedId) : undefined;
@@ -58,38 +59,59 @@ export function ClassroomPage() {
     setCategories((classroom.categories ?? []).join(", "));
   }, [classroom]);
 
-  function handleNewNote() {
+  async function handleNewNote() {
     if (!noteTitle.trim() || !classroom) return;
-    addNote({ classroomId: classroom.id, title: noteTitle.trim(), preview: notePreview.trim() });
-    setNoteTitle("");
-    setNotePreview("");
-    setNoteDialogOpen(false);
+    try {
+      await addNote({ classroomId: classroom.id, title: noteTitle.trim(), preview: notePreview.trim() });
+      setNoteTitle("");
+      setNotePreview("");
+      setNoteDialogOpen(false);
+    } catch {
+      // The store logs and exposes the sync error.
+    }
   }
 
-  function handleNewTask() {
+  async function handleNewTask() {
     if (!taskTitle.trim() || !classroom) return;
-    addTask({ classroomId: classroom.id, title: taskTitle.trim() });
-    setTaskTitle("");
-    setTaskDialogOpen(false);
+    try {
+      await addTask({ classroomId: classroom.id, title: taskTitle.trim() });
+      setTaskTitle("");
+      setTaskDialogOpen(false);
+    } catch {
+      // The store logs and exposes the sync error.
+    }
   }
 
-  function handleSaveClassroom() {
+  async function handleSaveClassroom() {
     if (!classroom) return;
-    editClassroom({
-      id: classroom.id,
-      title: title.trim() || classroom.title,
-      professor: professor.trim() || classroom.professor,
-      color,
-      description: description.trim(),
-      categories: categories.split(",").map((item) => item.trim()).filter(Boolean)
-    });
-    setEditOpen(false);
+    try {
+      await editClassroom({
+        id: classroom.id,
+        title: title.trim() || classroom.title,
+        professor: professor.trim() || classroom.professor,
+        color,
+        description: description.trim(),
+        categories: categories.split(",").map((item) => item.trim()).filter(Boolean)
+      });
+      setEditOpen(false);
+    } catch {
+      // The store logs and exposes the sync error.
+    }
   }
 
-  function handleDeleteClassroom() {
+  async function handleDeleteClassroom() {
     if (!classroom) return;
-    removeClassroom(classroom.id);
-    setDeleteOpen(false);
+    try {
+      await removeClassroom(classroom.id);
+      setDeleteOpen(false);
+    } catch {
+      // The store logs and exposes the sync error.
+    }
+  }
+
+  async function handleFileUpload(filesToUpload: File[]) {
+    if (!classroom) return;
+    await Promise.all(filesToUpload.map((file) => addFile({ classroomId: classroom.id, file })));
   }
 
   if (!classroom) {
@@ -277,7 +299,7 @@ export function ClassroomPage() {
           <Card><CardHeader><CardTitle>Notas</CardTitle></CardHeader><CardContent>{scopedNotes.length ? <NotesList notes={scopedNotes} /> : <p className="text-sm text-muted-foreground">Nenhuma nota criada ainda.</p>}</CardContent></Card>
           <Card><CardHeader><CardTitle>Trabalhos</CardTitle></CardHeader><CardContent>{scopedTasks.length ? <TaskList tasks={scopedTasks} /> : <p className="text-sm text-muted-foreground">Nenhum trabalho vinculado.</p>}</CardContent></Card>
         </TabsContent>
-        <TabsContent value="files" className="space-y-5"><FileDropzone /><FileList files={scopedFiles} /></TabsContent>
+        <TabsContent value="files" className="space-y-5"><FileDropzone onUpload={handleFileUpload} /><FileList files={scopedFiles} /></TabsContent>
         <TabsContent value="lessons" className="grid gap-4 md:grid-cols-2">
           {((classroom.lessons?.length ? classroom.lessons : [{ id: "empty-lesson", classroomId: classroom.id, title: "Sem aulas cadastradas", startsAt: "" }]) as Lesson[]).map((lesson, index) => (
             <Card key={lesson.id} className="p-5">

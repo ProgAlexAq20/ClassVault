@@ -7,12 +7,6 @@ import { useAuthStore } from "@/modules/auth/store/auth.store";
 import { supabase } from "@/shared/services/supabase.client";
 import type { PaymentStatus } from "@/modules/auth/types/auth.types";
 
-// Lista de emails autorizados a acessar o painel admin
-const ADMIN_EMAILS = [
-  "aquino.alexandre08@gmail.com"
-  // Adicione outros emails de administradores aqui
-];
-
 type Profile = {
   id: string;
   email: string;
@@ -21,14 +15,11 @@ type Profile = {
 };
 
 export function AdminPage() {
-  const { user } = useAuthStore();
+  const { isAdmin } = useAuthStore();
   const [searchEmail, setSearchEmail] = useState("");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  
-  // Verifica se o usuário atual tem permissão de admin
-  const isAdmin = user && ADMIN_EMAILS.includes(user.email || "");
   
   if (!isAdmin) {
     return (
@@ -59,18 +50,18 @@ export function AdminPage() {
     setMessage(null);
 
     try {
-      // Busca na tabela profiles usando o campo id (que referencia auth.users.id)
       const { data, error } = await supabase
         .from("profiles")
-        .select("id, payment_status, created_at")
-        .ilike("id", `%${searchEmail.trim()}%`);
+        .select("id, email, payment_status, created_at")
+        .ilike("email", `%${searchEmail.trim().toLowerCase()}%`)
+        .limit(10);
 
       if (error) throw error;
 
       // Enrich with email from auth (this is a simplified version)
       const enrichedProfiles: Profile[] = (data || []).map((p: any) => ({
         id: p.id,
-        email: searchEmail, // Simplified - in production you'd fetch from auth.users
+        email: p.email ?? "email indisponivel",
         payment_status: p.payment_status as PaymentStatus,
         created_at: p.created_at
       }));
@@ -92,7 +83,8 @@ export function AdminPage() {
     setMessage(null);
 
     try {
-      const { error } = await (supabase.from("profiles") as any)
+      const { error } = await supabase
+        .from("profiles")
         .update({ payment_status: "active" })
         .eq("id", userId);
 
@@ -115,7 +107,8 @@ export function AdminPage() {
     setMessage(null);
 
     try {
-      const { error } = await (supabase.from("profiles") as any)
+      const { error } = await supabase
+        .from("profiles")
         .update({ payment_status: "beta" })
         .eq("id", userId);
 

@@ -1,14 +1,37 @@
 import { FileUp, Image, Paperclip } from "lucide-react";
+import { useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { cn } from "@/shared/utils/cn";
 
-export function FileDropzone() {
+type FileDropzoneProps = {
+  onUpload?: (files: File[]) => Promise<void> | void;
+};
+
+export function FileDropzone({ onUpload }: FileDropzoneProps) {
+  const [error, setError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     accept: {
       "application/pdf": [".pdf"],
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
       "image/*": [".png", ".jpg", ".jpeg", ".webp"],
       "text/plain": [".txt"]
+    },
+    maxSize: 20 * 1024 * 1024,
+    onDropAccepted: async (acceptedFiles) => {
+      if (!onUpload || acceptedFiles.length === 0) return;
+      setError(null);
+      setIsUploading(true);
+      try {
+        await onUpload(acceptedFiles);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Nao foi possivel enviar o arquivo.");
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    onDropRejected: () => {
+      setError("Arquivo invalido ou acima do limite de 20 MB.");
     }
   });
 
@@ -26,8 +49,9 @@ export function FileDropzone() {
           <FileUp className="h-5 w-5" />
         </div>
         <div className="flex-1">
-          <p className="font-semibold">Arraste PDFs, DOCX, imagens ou textos</p>
-          <p className="mt-1 text-sm text-muted-foreground">Classifique por aula, trabalho ou referência depois do upload.</p>
+          <p className="font-semibold">{isUploading ? "Enviando arquivo..." : "Arraste PDFs, DOCX, imagens ou textos"}</p>
+          <p className="mt-1 text-sm text-muted-foreground">Os arquivos sao salvos no Storage do Supabase com acesso isolado por usuario.</p>
+          {error && <p className="mt-2 text-sm text-rose-300">{error}</p>}
         </div>
         <div className="flex gap-2 text-vault-mint">
           <Paperclip className="h-4 w-4" />

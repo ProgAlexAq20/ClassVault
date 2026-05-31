@@ -3,6 +3,24 @@ import type { Database } from "@/shared/services/supabase.types";
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const isProduction = import.meta.env.PROD;
+
+function isValidSupabaseUrl(value: unknown): value is string {
+  if (typeof value !== "string" || !value.trim()) return false;
+
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && url.hostname.endsWith(".supabase.co");
+  } catch {
+    return false;
+  }
+}
+
+function isSafePublicKey(value: unknown): value is string {
+  if (typeof value !== "string" || !value.trim()) return false;
+  const key = value.trim();
+  return !key.startsWith("sb_secret_") && !key.toLowerCase().includes("service_role");
+}
 
 /**
  * Gets the application base URL.
@@ -27,6 +45,18 @@ export function getAppUrl(): string {
   return "";
 }
 
+export function getSupabaseConfigError(): string | null {
+  if (!isValidSupabaseUrl(supabaseUrl)) {
+    return "VITE_SUPABASE_URL ausente ou invalida.";
+  }
+
+  if (!isSafePublicKey(supabaseAnonKey)) {
+    return "VITE_SUPABASE_ANON_KEY ausente, invalida ou privada. Use apenas a anon/public key no frontend.";
+  }
+
+  return null;
+}
+
 /**
  * Gets the redirect URL for Supabase auth (OAuth and email).
  * Uses hash-based routing for PWA compatibility.
@@ -48,14 +78,32 @@ export function getDeepLinkRedirectTo(): string | undefined {
   return `${base}/#auth-callback`;
 }
 
-export const supabase = supabaseUrl && supabaseAnonKey
+export const supabaseConfigError = getSupabaseConfigError();
+
+export const supabase = !supabaseConfigError
   ? createClient<Database>(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        // Use dynamic redirect URL based on environment
         detectSessionInUrl: true,
-        flowType: "pkce"
+        flowType: "pkce",
+        storageKey: "classvault.supabase.auth"
+      },
+      global: {
+        headers: {
+          "X-Client-Info": `classvault-web/${isProduction ? "prod" : "dev"}`
+        }
+      },
+      db: {
+        schema: "public"
       }
     })
   : null;
+
+export function requireSupabaseClient() {
+  if (!supabase) {
+    throw new Error(supabaseConfigError ?? "Supabase nao esta configurado.");
+  }
+
+  return supabase;
+}

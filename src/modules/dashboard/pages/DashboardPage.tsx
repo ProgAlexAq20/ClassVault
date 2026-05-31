@@ -30,19 +30,22 @@ export function DashboardPage() {
   const setRoute = useNavigationStore((state) => state.setRoute);
   const addClassroom = useVaultDataStore((state) => state.addClassroom);
 
-  function handleCreateClassroom() {
+  async function handleCreateClassroom() {
     const title = newTitle.trim();
     if (!title) return;
-    const classroom = addClassroom({ title, professor: newProfessor.trim() });
-    if (!classroom) {
-      // Beta limit hit — redirect to premium page
+    try {
+      const classroom = await addClassroom({ title, professor: newProfessor.trim() });
+      if (!classroom) {
+        setCreateOpen(false);
+        return setRoute("premium");
+      }
+      openClassroom(classroom.id);
+      setNewTitle("");
+      setNewProfessor("");
       setCreateOpen(false);
-      return setRoute('premium');
+    } catch {
+      // The store exposes and logs the sync error; keep the dialog open for retry.
     }
-    openClassroom(classroom.id);
-    setNewTitle("");
-    setNewProfessor("");
-    setCreateOpen(false);
   }
 
   const hasClassrooms = classrooms.length > 0;

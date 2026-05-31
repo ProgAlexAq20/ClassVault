@@ -28,9 +28,13 @@ export function PremiumPage() {
     window.setTimeout(() => setCopySuccess(false), 2000);
   }
 
-  function handleAlreadyPaid() {
+  async function handleAlreadyPaid() {
     if (paymentStatus === "active") return;
-    requestPremiumReview();
+    try {
+      await requestPremiumReview();
+    } catch {
+      // The auth store exposes and logs the error.
+    }
   }
 
   return (
