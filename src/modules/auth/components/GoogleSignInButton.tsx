@@ -24,19 +24,17 @@ export function GoogleSignInButton({ onClick, disabled }: GoogleSignInButtonProp
       type="button"
       onClick={handleClick}
       disabled={disabled || loading}
-      className="group relative w-full overflow-hidden rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-foreground shadow-sm backdrop-blur-sm transition-all duration-300 hover:bg-white/[0.08] hover:shadow-md hover:shadow-vault-mint/10 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+      className="group relative w-full overflow-hidden rounded-xl border border-white/10 bg-white/[0.055] px-4 py-3 transition-all duration-300 hover:bg-white/[0.08] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60 light:bg-white/70 light:hover:bg-white/90"
     >
-      {/* Premium subtle gradient overlay */}
-      <span className="pointer-events-none absolute inset-0 bg-gradient-to-r from-vault-mint/5 via-transparent to-vault-mint/5 opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-
-      <span className="relative flex items-center justify-center gap-3">
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+      <div className="relative flex items-center justify-center gap-3">
         {loading ? (
           <Loader2 className="h-5 w-5 animate-spin text-vault-mint" />
         ) : (
-          <svg className="h-5 w-5" viewBox="0 0 24 24">
+          <svg className="h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
             <path
               fill="#4285F4"
-              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
+              d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
             />
             <path
               fill="#34A853"
@@ -52,10 +50,10 @@ export function GoogleSignInButton({ onClick, disabled }: GoogleSignInButtonProp
             />
           </svg>
         )}
-        <span className="tracking-wide">
+        <span className="text-sm font-semibold text-foreground">
           {loading ? "Redirecionando..." : "Continuar com Google"}
         </span>
-      </span>
+      </div>
     </button>
   );
 }
