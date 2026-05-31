@@ -1,5 +1,5 @@
-import { CalendarDays, FileText, LayoutDashboard, ListTodo, NotebookPen, Sparkles, Video } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { FileText, LayoutDashboard, NotebookPen, Video } from "lucide-react";
+import { useEffect, useState } from "react";
 import { EventTimeline } from "@/modules/calendar/components/EventTimeline";
 import { useEvents } from "@/modules/calendar/hooks/use-events";
 import { FileDropzone } from "@/modules/files/components/FileDropzone";
@@ -48,7 +48,6 @@ export function ClassroomPage() {
   const [color, setColor] = useState("#8fce9e");
   const [description, setDescription] = useState("");
   const [categories, setCategories] = useState("");
-  const [lessons, setLessons] = useState("");
 
   useEffect(() => {
     if (!classroom) return;
@@ -57,7 +56,6 @@ export function ClassroomPage() {
     setColor(classroom.color);
     setDescription(classroom.description ?? "");
     setCategories((classroom.categories ?? []).join(", "));
-    setLessons((classroom.lessons ?? []).map((lesson) => lesson.title).join(", "));
   }, [classroom]);
 
   function handleNewNote() {

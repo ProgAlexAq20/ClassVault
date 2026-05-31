@@ -23,6 +23,9 @@ type Profile = {
 export function AdminPage() {
   const { user } = useAuthStore();
   const [searchEmail, setSearchEmail] = useState("");
+  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   
   // Verifica se o usuário atual tem permissão de admin
   const isAdmin = user && ADMIN_EMAILS.includes(user.email || "");
@@ -49,9 +52,6 @@ export function AdminPage() {
       </div>
     );
   }
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   async function searchProfiles() {
     if (!searchEmail.trim() || !supabase) return;

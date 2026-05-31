@@ -1,5 +1,5 @@
 import { Bell, Brain, CalendarDays, CheckSquare, GraduationCap, Home, Moon, Search, Settings, Sparkles, Sun, Plus, Zap, Clock, User } from "lucide-react";
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Logo } from "@/shared/components/Logo";

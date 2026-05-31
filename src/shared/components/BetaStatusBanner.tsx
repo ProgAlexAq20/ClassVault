@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { AlertCircle, Clock } from "lucide-react";
 import { useAuthStore } from "@/modules/auth/store/auth.store";
 import { useNavigationStore } from "@/shared/store/navigation.store";
 import { Button } from "./ui/button";

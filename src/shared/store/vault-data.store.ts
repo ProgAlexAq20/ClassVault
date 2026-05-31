@@ -46,7 +46,11 @@ type VaultDataState = {
 
 const colors = ["#8fce9e", "#39ff88", "#b7e4c7", "#dff5e5"];
 
-const canSync = () => useAuthStore.getState().paymentStatus === "active";
+// CORREÇÃO: Permitir sync para usuários beta também
+const canSync = () => {
+  const paymentStatus = useAuthStore.getState().paymentStatus;
+  return paymentStatus === "active" || paymentStatus === "beta";
+};
 
 export const useVaultDataStore = create<VaultDataState>()(
   persist(
@@ -79,7 +83,7 @@ export const useVaultDataStore = create<VaultDataState>()(
           taskCount: 0,
           description: description ?? "",
           categories: categories ?? [],
-          lessons: (lessons ?? []).map((lessonTitle, index) => ({
+          lessons: (lessons ?? []).map((lessonTitle) => ({
             id: crypto.randomUUID(),
             classroomId: "",
             title: lessonTitle,
@@ -90,7 +94,7 @@ export const useVaultDataStore = create<VaultDataState>()(
         set((state) => ({ classrooms: [classroom, ...state.classrooms] }));
         const userId = get().userId;
         if (supabase && userId && canSync()) {
-          void supabase.from("classrooms").insert({
+          const dataToInsert = {
             id: classroom.id,
             user_id: userId,
             title: classroom.title,
@@ -100,7 +104,15 @@ export const useVaultDataStore = create<VaultDataState>()(
             professor: classroom.professor,
             description: classroom.description,
             categories: classroom.categories
-          } as any);
+          };
+          console.log("📤 Salvando classroom no Supabase:", dataToInsert);
+          supabase.from("classrooms").insert(dataToInsert as any).then(({ data, error }) => {
+            if (error) {
+              console.error("❌ Erro ao salvar classroom:", error);
+            } else {
+              console.log("✅ Classroom salvo com sucesso:", data);
+            }
+          });
         }
         return classroom;
       },
@@ -112,13 +124,21 @@ export const useVaultDataStore = create<VaultDataState>()(
         }));
         const userId = get().userId;
         if (supabase && userId && canSync()) {
-          void supabase.from("classrooms").update({
+          const dataToUpdate = {
             title: classroom.title,
             professor: classroom.professor,
             color: classroom.color,
             description: classroom.description,
             categories: classroom.categories
-          } as any).eq("id", classroom.id);
+          };
+          console.log("📤 Atualizando classroom no Supabase:", classroom.id, dataToUpdate);
+          supabase.from("classrooms").update(dataToUpdate as any).eq("id", classroom.id).then(({ data, error }) => {
+            if (error) {
+              console.error("❌ Erro ao atualizar classroom:", error);
+            } else {
+              console.log("✅ Classroom atualizado com sucesso:", data);
+            }
+          });
         }
       },
       removeClassroom: (id) => {
@@ -131,7 +151,14 @@ export const useVaultDataStore = create<VaultDataState>()(
         }));
         const userId = get().userId;
         if (supabase && userId && canSync()) {
-          void supabase.from("classrooms").delete().eq("id", id);
+          console.log("📤 Deletando classroom no Supabase:", id);
+          supabase.from("classrooms").delete().eq("id", id).then(({ data, error }) => {
+            if (error) {
+              console.error("❌ Erro ao deletar classroom:", error);
+            } else {
+              console.log("✅ Classroom deletado com sucesso:", data);
+            }
+          });
         }
       },
       addNote: ({ classroomId, title, preview }) => {
@@ -149,11 +176,19 @@ export const useVaultDataStore = create<VaultDataState>()(
           )
         }));
         if (supabase && get().userId && canSync()) {
-          void supabase.from("notes").insert({
+          const dataToInsert = {
             id: note.id,
             classroom_id: note.classroomId,
             title: note.title,
             content: note.preview
+          };
+          console.log("📤 Salvando note no Supabase:", dataToInsert);
+          supabase.from("notes").insert(dataToInsert).then(({ data, error }) => {
+            if (error) {
+              console.error("❌ Erro ao salvar note:", error);
+            } else {
+              console.log("✅ Note salva com sucesso:", data);
+            }
           });
         }
         return note;
@@ -174,13 +209,21 @@ export const useVaultDataStore = create<VaultDataState>()(
           )
         }));
         if (supabase && get().userId && canSync()) {
-          void supabase.from("tasks").insert({
+          const dataToInsert = {
             id: task.id,
             classroom_id: task.classroomId,
             title: task.title,
             status: task.status,
             priority: task.priority,
             due_at: task.dueAt
+          };
+          console.log("📤 Salvando task no Supabase:", dataToInsert);
+          supabase.from("tasks").insert(dataToInsert).then(({ data, error }) => {
+            if (error) {
+              console.error("❌ Erro ao salvar task:", error);
+            } else {
+              console.log("✅ Task salva com sucesso:", data);
+            }
           });
         }
         return task;
@@ -190,8 +233,12 @@ export const useVaultDataStore = create<VaultDataState>()(
         return get().addTask({ classroomId, title });
       },
       loadRemoteData: async (userId) => {
+        console.log("📥 Carregando dados remotos do Supabase para userId:", userId);
         set({ userId });
-        if (!supabase) return;
+        if (!supabase) {
+          console.warn("⚠️ Supabase não configurado");
+          return;
+        }
 
         const [classroomsResult, notesResult, tasksResult, filesResult, eventsResult] = await Promise.all([
           supabase.from("classrooms").select("*").order("created_at", { ascending: false }),
@@ -201,10 +248,24 @@ export const useVaultDataStore = create<VaultDataState>()(
           supabase.from("events").select("*").order("starts_at", { ascending: true })
         ]);
 
+        console.log("📊 Resultados do Supabase:", {
+          classrooms: classroomsResult.data?.length ?? 0,
+          notes: notesResult.data?.length ?? 0,
+          tasks: tasksResult.data?.length ?? 0,
+          files: filesResult.data?.length ?? 0,
+          events: eventsResult.data?.length ?? 0
+        });
+
         if (classroomsResult.error) {
+          console.error("❌ Erro ao carregar classrooms:", classroomsResult.error);
           set({ classrooms: [], notes: [], tasks: [], files: [], events: [] });
           return;
         }
+
+        if (notesResult.error) console.error("❌ Erro ao carregar notes:", notesResult.error);
+        if (tasksResult.error) console.error("❌ Erro ao carregar tasks:", tasksResult.error);
+        if (filesResult.error) console.error("❌ Erro ao carregar files:", filesResult.error);
+        if (eventsResult.error) console.error("❌ Erro ao carregar events:", eventsResult.error);
 
         const remoteClassrooms: Classroom[] = (classroomsResult.data ?? []).map((item: any) => ({
           id: item.id,

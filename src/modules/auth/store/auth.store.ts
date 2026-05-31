@@ -2,11 +2,6 @@ import { create } from "zustand";
 import { supabase, getEmailRedirectTo } from "@/shared/services/supabase.client";
 import type { AuthState, PaymentStatus } from "@/modules/auth/types/auth.types";
 
-type ProfileRecord = {
-  id: string;
-  payment_status: PaymentStatus;
-};
-
 const defaultPaymentStatus: PaymentStatus = "beta";
 
 export const useAuthStore = create<AuthState>((set, get) => ({

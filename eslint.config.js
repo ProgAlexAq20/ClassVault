@@ -1,20 +1,61 @@
-import fs from 'node:fs';
+import js from '@eslint/js';
+import globals from 'globals';
+import typescript from '@typescript-eslint/eslint-plugin';
+import typescriptParser from '@typescript-eslint/parser';
+import reactHooks from 'eslint-plugin-react-hooks';
 
-/** Minimal ESLint config compatible with the project's TypeScript + React setup */
-export default {
-  parser: '@typescript-eslint/parser',
-  parserOptions: {
-    ecmaVersion: 2024,
-    sourceType: 'module',
-    ecmaFeatures: { jsx: true }
+export default [
+  { ignores: ['dist', 'node_modules'] },
+  {
+    files: ['**/*.{ts,tsx}'],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.browser,
+      parser: typescriptParser,
+      parserOptions: {
+        ecmaVersion: 2020,
+        ecmaFeatures: { jsx: true },
+        sourceType: 'module',
+      },
+    },
+    plugins: {
+      '@typescript-eslint': typescript,
+      'react-hooks': reactHooks,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...typescript.configs.recommended.rules,
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+      '@typescript-eslint/no-explicit-any': 'off',
+      'no-console': 'warn',
+    },
   },
-  plugins: ['@typescript-eslint', 'react'],
-  extends: ['eslint:recommended', 'plugin:@typescript-eslint/recommended', 'plugin:react/recommended'],
-  settings: { react: { version: 'detect' } },
-  env: { browser: true, es2024: true, node: true },
-  rules: {
-    // keep defaults but allow dev flexibility
-    'no-console': 'warn',
-    '@typescript-eslint/no-explicit-any': 'off'
-  }
-};
+  {
+    files: ['**/*.js'],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: { ...globals.browser, ...globals.node },
+      sourceType: 'module',
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+    },
+  },
+  {
+    files: ['tailwind.config.ts'],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: { ...globals.browser, ...globals.node },
+      parser: typescriptParser,
+      parserOptions: {
+        ecmaVersion: 2020,
+        sourceType: 'module',
+      },
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      'no-undef': 'off',
+    },
+  },
+];

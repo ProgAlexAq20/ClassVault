@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Copy, CheckCircle2, Sparkles, CreditCard, ShieldCheck } from "lucide-react";
+import { Copy, Sparkles, CreditCard, ShieldCheck } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { useAuthStore } from "@/modules/auth/store/auth.store";
