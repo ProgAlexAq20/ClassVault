@@ -273,3 +273,61 @@ Você deve ver:
 **Desenvolvedor:** Claude (Cline AI)  
 **Versão:** 1.0  
 **Status:** ✅ Correções aplicadas - Aguardando correção da Anon Key pelo usuário
+
+---
+
+## Auditoria Supabase - 2026-05-31
+
+### Erros encontrados
+
+- `lessons`, `files`, `notes`, `tasks` e `summaries` dependiam apenas do relacionamento com `classrooms` para isolamento; agora tambem possuem `user_id` obrigatorio.
+- `summaries` eram gerados pela IA, mas nao eram gravados no Supabase.
+- `lessons` e `events` existiam no schema, mas nao tinham fluxo real de criacao persistente na UI.
+- O `FileDropzone` do Estudio de IA aceitava arquivos sem executar upload persistente.
+- Policies antigas poderiam permanecer ativas em projetos onde o schema anterior ja havia sido aplicado.
+- Alguns updates/deletes de `classrooms` nao filtravam explicitamente por `user_id` no frontend, dependendo apenas da RLS.
+- O service legado de classrooms fazia query direta sem validar sessao/usuario explicitamente.
+
+### Arquivos corrigidos
+
+- `supabase/schema.sql`
+- `src/shared/store/vault-data.store.ts`
+- `src/shared/services/supabase.types.ts`
+- `src/modules/classrooms/pages/ClassroomPage.tsx`
+- `src/modules/calendar/pages/CalendarPage.tsx`
+- `src/modules/summaries/components/SummaryStudio.tsx`
+- `src/modules/summaries/services/summary.service.ts`
+- `src/modules/summaries/types/summary.types.ts`
+- `src/modules/classrooms/services/classroom.service.ts`
+
+### Operacoes que nao persistiam
+
+- Criacao de `lessons`: adicionada action `addLesson()` e dialogo na pagina da materia.
+- Criacao de `events`: adicionada action `addEvent()` e dialogo na agenda.
+- Geracao de `summaries`: agora grava em `public.summaries` apos gerar o conteudo.
+- Upload de arquivos pelo Estudio de IA: agora usa `addFile()` e grava no Supabase Storage + tabela `files`.
+
+### Validacao de CRUD e user_id
+
+- `classrooms`: INSERT envia `user_id`; UPDATE/DELETE filtram por `id` e `user_id`; SELECT filtra por `user_id`.
+- `lessons`: INSERT envia `user_id` e `classroom_id`; SELECT filtra por `user_id`.
+- `files`: INSERT envia `user_id`, `classroom_id` e `storage_path`; upload usa pasta `auth.uid()/classroomId/...`.
+- `notes`: INSERT envia `user_id` e `classroom_id`; SELECT filtra por `user_id`.
+- `tasks`: INSERT envia `user_id` e `classroom_id`; SELECT filtra por `user_id`.
+- `events`: INSERT envia `user_id`; eventos sem materia continuam isolados pelo dono.
+- `summaries`: INSERT envia `user_id` e `classroom_id`; SELECT filtra por `user_id`.
+- `profiles`: leitura propria ou admin; update admin protegido por `is_admin`.
+
+### RLS, policies e isolamento por usuario
+
+- Todas as tabelas principais permanecem com RLS e `force row level security`.
+- Policies antigas do schema anterior agora sao removidas explicitamente antes de criar as novas.
+- Child tables validam simultaneamente `auth.uid() = user_id` e posse da classroom via `public.owns_classroom(classroom_id)`.
+- `events` validam `auth.uid() = user_id`; quando ha `classroom_id`, a classroom tambem precisa pertencer ao usuario.
+- Storage privado `classvault-files` isola objetos pela primeira pasta do path, que deve ser o `auth.uid()`.
+
+### Validacao executada
+
+- `npm run lint`: passou.
+- `npm run build`: passou.
+- Avisos restantes: chunk JS grande e aviso de dynamic import do Vite; nao bloqueiam deploy nem persistencia.

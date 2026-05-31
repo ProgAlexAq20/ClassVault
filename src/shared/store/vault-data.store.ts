@@ -4,6 +4,8 @@ import type { CalendarEvent } from "@/modules/calendar/types/calendar.types";
 import type { Classroom } from "@/modules/classrooms/types/classroom.types";
 import type { VaultFile } from "@/modules/files/types/file.types";
 import type { Note } from "@/modules/notes/types/note.types";
+import type { Lesson } from "@/modules/classrooms/types/classroom.types";
+import type { SummaryResult } from "@/modules/summaries/types/summary.types";
 import type { Task } from "@/modules/tasks/types/task.types";
 import { useAuthStore } from "@/modules/auth/store/auth.store";
 import { assertNonEmpty, getErrorMessage, logAppError } from "@/shared/services/app-error";
@@ -29,6 +31,28 @@ type CreateTaskInput = {
   title: string;
 };
 
+type CreateLessonInput = {
+  classroomId: string;
+  title: string;
+  startsAt: string;
+  description?: string;
+};
+
+type CreateEventInput = {
+  classroomId?: string;
+  title: string;
+  startsAt: string;
+  endsAt?: string;
+  type?: CalendarEvent["type"];
+};
+
+type CreateSummaryInput = {
+  classroomId: string;
+  provider: string;
+  mode: SummaryResult["mode"];
+  content: string;
+};
+
 type UploadFileInput = {
   classroomId: string;
   file: File;
@@ -43,12 +67,16 @@ type VaultDataState = {
   files: VaultFile[];
   tasks: Task[];
   events: CalendarEvent[];
+  summaries: SummaryResult[];
   addClassroom: (input: CreateClassroomInput) => Promise<Classroom | null>;
   editClassroom: (classroom: Partial<Classroom> & { id: string }) => Promise<void>;
   removeClassroom: (id: string) => Promise<void>;
+  addLesson: (input: CreateLessonInput) => Promise<Lesson>;
   addNote: (input: CreateNoteInput) => Promise<Note>;
   addTask: (input: CreateTaskInput) => Promise<Task>;
+  addEvent: (input: CreateEventInput) => Promise<CalendarEvent>;
   addFile: (input: UploadFileInput) => Promise<VaultFile>;
+  addSummary: (input: CreateSummaryInput) => Promise<SummaryResult>;
   addQuickEntry: (title: string) => Promise<Task | null>;
   loadRemoteData: (userId: string) => Promise<void>;
   clearUserData: () => void;
@@ -88,6 +116,7 @@ export const useVaultDataStore = create<VaultDataState>()(
       files: [],
       tasks: [],
       events: [],
+      summaries: [],
       addClassroom: async ({ title, professor, color, description, categories }) => {
         try {
           const userId = requireUserId();
@@ -142,7 +171,7 @@ export const useVaultDataStore = create<VaultDataState>()(
       },
       editClassroom: async (classroom) => {
         try {
-          requireUserId();
+          const userId = requireUserId();
           const client = requireSupabaseClient();
           const update = {
             title: classroom.title ? assertNonEmpty(classroom.title, "Nome da materia") : undefined,
@@ -156,6 +185,7 @@ export const useVaultDataStore = create<VaultDataState>()(
             .from("classrooms")
             .update(update)
             .eq("id", classroom.id)
+            .eq("user_id", userId)
             .select("*")
             .single();
           if (error) throw error;
@@ -183,9 +213,9 @@ export const useVaultDataStore = create<VaultDataState>()(
       },
       removeClassroom: async (id) => {
         try {
-          requireUserId();
+          const userId = requireUserId();
           const client = requireSupabaseClient();
-          const { error } = await client.from("classrooms").delete().eq("id", id);
+          const { error } = await client.from("classrooms").delete().eq("id", id).eq("user_id", userId);
           if (error) throw error;
 
           set((state) => ({
@@ -194,6 +224,7 @@ export const useVaultDataStore = create<VaultDataState>()(
             tasks: state.tasks.filter((item) => item.classroomId !== id),
             files: state.files.filter((item) => item.classroomId !== id),
             events: state.events.filter((item) => item.classroomId !== id),
+            summaries: state.summaries.filter((item) => item.classroomId !== id),
             syncError: null
           }));
         } catch (error) {
@@ -202,15 +233,58 @@ export const useVaultDataStore = create<VaultDataState>()(
           throw error;
         }
       },
+      addLesson: async ({ classroomId, title, startsAt, description }) => {
+        try {
+          const userId = requireUserId();
+          const client = requireSupabaseClient();
+          const normalizedTitle = assertNonEmpty(title, "Titulo da aula");
+          if (!startsAt) throw new Error("Data da aula e obrigatoria.");
+
+          const { data, error } = await client
+            .from("lessons")
+            .insert({
+              id: crypto.randomUUID(),
+              user_id: userId,
+              classroom_id: classroomId,
+              title: normalizedTitle,
+              starts_at: startsAt,
+              description: description?.trim() || null
+            })
+            .select("*")
+            .single();
+          if (error) throw error;
+
+          const lesson: Lesson = {
+            id: data.id,
+            classroomId: data.classroom_id,
+            title: data.title,
+            startsAt: data.starts_at,
+            description: data.description ?? undefined
+          };
+
+          set((state) => ({
+            classrooms: state.classrooms.map((item) =>
+              item.id === classroomId ? { ...item, lessons: [lesson, ...(item.lessons ?? [])] } : item
+            ),
+            syncError: null
+          }));
+          return lesson;
+        } catch (error) {
+          logAppError("vault.addLesson", error, { classroomId });
+          set({ syncError: getErrorMessage(error) });
+          throw error;
+        }
+      },
       addNote: async ({ classroomId, title, preview }) => {
         try {
-          requireUserId();
+          const userId = requireUserId();
           const client = requireSupabaseClient();
           const normalizedTitle = assertNonEmpty(title, "Titulo da nota");
           const { data, error } = await client
             .from("notes")
             .insert({
               id: crypto.randomUUID(),
+              user_id: userId,
               classroom_id: classroomId,
               title: normalizedTitle,
               content: preview?.trim() || "Nova anotacao criada no ClassVault."
@@ -244,7 +318,7 @@ export const useVaultDataStore = create<VaultDataState>()(
       },
       addTask: async ({ classroomId, title }) => {
         try {
-          requireUserId();
+          const userId = requireUserId();
           const client = requireSupabaseClient();
           const normalizedTitle = assertNonEmpty(title, "Nome da tarefa");
           const dueAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 3).toISOString();
@@ -252,6 +326,7 @@ export const useVaultDataStore = create<VaultDataState>()(
             .from("tasks")
             .insert({
               id: crypto.randomUUID(),
+              user_id: userId,
               classroom_id: classroomId,
               title: normalizedTitle,
               status: "todo",
@@ -285,6 +360,45 @@ export const useVaultDataStore = create<VaultDataState>()(
           throw error;
         }
       },
+      addEvent: async ({ classroomId, title, startsAt, endsAt, type = "event" }) => {
+        try {
+          const userId = requireUserId();
+          const client = requireSupabaseClient();
+          const normalizedTitle = assertNonEmpty(title, "Titulo do evento");
+          if (!startsAt) throw new Error("Data do evento e obrigatoria.");
+
+          const { data, error } = await client
+            .from("events")
+            .insert({
+              id: crypto.randomUUID(),
+              user_id: userId,
+              classroom_id: classroomId ?? null,
+              title: normalizedTitle,
+              starts_at: startsAt,
+              ends_at: endsAt || null,
+              type
+            })
+            .select("*")
+            .single();
+          if (error) throw error;
+
+          const event: CalendarEvent = {
+            id: data.id,
+            classroomId: data.classroom_id ?? undefined,
+            title: data.title,
+            startsAt: data.starts_at,
+            endsAt: data.ends_at ?? undefined,
+            type: data.type as CalendarEvent["type"]
+          };
+
+          set((state) => ({ events: [...state.events, event].sort((a, b) => a.startsAt.localeCompare(b.startsAt)), syncError: null }));
+          return event;
+        } catch (error) {
+          logAppError("vault.addEvent", error, { classroomId: classroomId ?? null });
+          set({ syncError: getErrorMessage(error) });
+          throw error;
+        }
+      },
       addFile: async ({ classroomId, file, category = "Referências" }) => {
         try {
           const userId = requireUserId();
@@ -302,6 +416,7 @@ export const useVaultDataStore = create<VaultDataState>()(
             .from("files")
             .insert({
               id,
+              user_id: userId,
               classroom_id: classroomId,
               name: file.name,
               storage_path: storagePath,
@@ -338,6 +453,43 @@ export const useVaultDataStore = create<VaultDataState>()(
           throw error;
         }
       },
+      addSummary: async ({ classroomId, provider, mode, content }) => {
+        try {
+          const userId = requireUserId();
+          const client = requireSupabaseClient();
+          const normalizedContent = assertNonEmpty(content, "Conteudo do resumo", 60000);
+
+          const { data, error } = await client
+            .from("summaries")
+            .insert({
+              id: crypto.randomUUID(),
+              user_id: userId,
+              classroom_id: classroomId,
+              provider,
+              mode,
+              content: normalizedContent
+            })
+            .select("*")
+            .single();
+          if (error) throw error;
+
+          const summary: SummaryResult = {
+            id: data.id,
+            classroomId: data.classroom_id,
+            title: "Resumo salvo",
+            mode: data.mode as SummaryResult["mode"],
+            content: data.content,
+            createdAt: data.created_at
+          };
+
+          set((state) => ({ summaries: [summary, ...state.summaries], syncError: null }));
+          return summary;
+        } catch (error) {
+          logAppError("vault.addSummary", error, { classroomId });
+          set({ syncError: getErrorMessage(error) });
+          throw error;
+        }
+      },
       addQuickEntry: async (title) => {
         const classroomId = get().classrooms[0]?.id;
         if (!classroomId) {
@@ -351,24 +503,29 @@ export const useVaultDataStore = create<VaultDataState>()(
         if (!supabase) return;
 
         try {
-          const [classroomsResult, notesResult, tasksResult, filesResult, eventsResult] = await Promise.all([
+          const [classroomsResult, lessonsResult, notesResult, tasksResult, filesResult, eventsResult, summariesResult] = await Promise.all([
             supabase
               .from("classrooms")
               .select("id,title,code,color,icon,professor,description,categories,created_at")
               .eq("user_id", userId)
               .order("created_at", { ascending: false }),
-            supabase.from("notes").select("*").order("created_at", { ascending: false }),
-            supabase.from("tasks").select("*").order("created_at", { ascending: false }),
-            supabase.from("files").select("*").order("created_at", { ascending: false }),
-            supabase.from("events").select("*").order("starts_at", { ascending: true })
+            supabase.from("lessons").select("*").eq("user_id", userId).order("starts_at", { ascending: true }),
+            supabase.from("notes").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
+            supabase.from("tasks").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
+            supabase.from("files").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
+            supabase.from("events").select("*").eq("user_id", userId).order("starts_at", { ascending: true }),
+            supabase.from("summaries").select("*").eq("user_id", userId).order("created_at", { ascending: false })
           ]);
 
           if (classroomsResult.error) throw classroomsResult.error;
+          if (lessonsResult.error) throw lessonsResult.error;
           if (notesResult.error) throw notesResult.error;
           if (tasksResult.error) throw tasksResult.error;
           if (filesResult.error) throw filesResult.error;
           if (eventsResult.error) throw eventsResult.error;
+          if (summariesResult.error) throw summariesResult.error;
 
+          const remoteLessons = lessonsResult.data ?? [];
           const remoteNotes = notesResult.data ?? [];
           const remoteTasks = tasksResult.data ?? [];
           const remoteFiles = filesResult.data ?? [];
@@ -386,7 +543,15 @@ export const useVaultDataStore = create<VaultDataState>()(
             taskCount: remoteTasks.filter((task) => task.classroom_id === item.id).length,
             description: item.description ?? "",
             categories: item.categories ?? [],
-            lessons: []
+            lessons: remoteLessons
+              .filter((lesson) => lesson.classroom_id === item.id)
+              .map((lesson) => ({
+                id: lesson.id,
+                classroomId: lesson.classroom_id,
+                title: lesson.title,
+                startsAt: lesson.starts_at,
+                description: lesson.description ?? undefined
+              }))
           }));
 
           set({
@@ -425,16 +590,24 @@ export const useVaultDataStore = create<VaultDataState>()(
               endsAt: item.ends_at ?? undefined,
               type: item.type as CalendarEvent["type"]
             })),
+            summaries: (summariesResult.data ?? []).map((item) => ({
+              id: item.id,
+              classroomId: item.classroom_id,
+              title: "Resumo salvo",
+              mode: item.mode as SummaryResult["mode"],
+              content: item.content,
+              createdAt: item.created_at
+            })),
             syncError: null
           });
         } catch (error) {
           logAppError("vault.loadRemoteData", error, { userId });
-          set({ classrooms: [], notes: [], tasks: [], files: [], events: [], syncError: getErrorMessage(error) });
+          set({ classrooms: [], notes: [], tasks: [], files: [], events: [], summaries: [], syncError: getErrorMessage(error) });
           throw error;
         }
       },
       clearUserData: () => {
-        set({ userId: null, classrooms: [], notes: [], files: [], tasks: [], events: [], syncError: null });
+        set({ userId: null, classrooms: [], notes: [], files: [], tasks: [], events: [], summaries: [], syncError: null });
       }
     }),
     {
@@ -445,7 +618,8 @@ export const useVaultDataStore = create<VaultDataState>()(
         notes: state.notes,
         files: state.files,
         tasks: state.tasks,
-        events: state.events
+        events: state.events,
+        summaries: state.summaries
       })
     }
   )

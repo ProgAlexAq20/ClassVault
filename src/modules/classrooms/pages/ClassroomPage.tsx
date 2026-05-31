@@ -26,6 +26,7 @@ export function ClassroomPage() {
   const addNote = useVaultDataStore((state) => state.addNote);
   const addTask = useVaultDataStore((state) => state.addTask);
   const addFile = useVaultDataStore((state) => state.addFile);
+  const addLesson = useVaultDataStore((state) => state.addLesson);
   const editClassroom = useVaultDataStore((state) => state.editClassroom);
   const removeClassroom = useVaultDataStore((state) => state.removeClassroom);
   const classroom = selectedId ? classrooms.find((item) => item.id === selectedId) : undefined;
@@ -41,9 +42,13 @@ export function ClassroomPage() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
+  const [lessonDialogOpen, setLessonDialogOpen] = useState(false);
   const [noteTitle, setNoteTitle] = useState("");
   const [notePreview, setNotePreview] = useState("");
   const [taskTitle, setTaskTitle] = useState("");
+  const [lessonTitle, setLessonTitle] = useState("");
+  const [lessonStartsAt, setLessonStartsAt] = useState("");
+  const [lessonDescription, setLessonDescription] = useState("");
   const [title, setTitle] = useState("");
   const [professor, setProfessor] = useState("");
   const [color, setColor] = useState("#8fce9e");
@@ -112,6 +117,24 @@ export function ClassroomPage() {
   async function handleFileUpload(filesToUpload: File[]) {
     if (!classroom) return;
     await Promise.all(filesToUpload.map((file) => addFile({ classroomId: classroom.id, file })));
+  }
+
+  async function handleNewLesson() {
+    if (!classroom || !lessonTitle.trim() || !lessonStartsAt) return;
+    try {
+      await addLesson({
+        classroomId: classroom.id,
+        title: lessonTitle.trim(),
+        startsAt: new Date(lessonStartsAt).toISOString(),
+        description: lessonDescription.trim()
+      });
+      setLessonTitle("");
+      setLessonStartsAt("");
+      setLessonDescription("");
+      setLessonDialogOpen(false);
+    } catch {
+      // The store logs and exposes the sync error.
+    }
   }
 
   if (!classroom) {
@@ -300,14 +323,48 @@ export function ClassroomPage() {
           <Card><CardHeader><CardTitle>Trabalhos</CardTitle></CardHeader><CardContent>{scopedTasks.length ? <TaskList tasks={scopedTasks} /> : <p className="text-sm text-muted-foreground">Nenhum trabalho vinculado.</p>}</CardContent></Card>
         </TabsContent>
         <TabsContent value="files" className="space-y-5"><FileDropzone onUpload={handleFileUpload} /><FileList files={scopedFiles} /></TabsContent>
-        <TabsContent value="lessons" className="grid gap-4 md:grid-cols-2">
-          {((classroom.lessons?.length ? classroom.lessons : [{ id: "empty-lesson", classroomId: classroom.id, title: "Sem aulas cadastradas", startsAt: "" }]) as Lesson[]).map((lesson, index) => (
-            <Card key={lesson.id} className="p-5">
-              <Video className="h-5 w-5 text-vault-mint" />
-              <h3 className="mt-4 font-semibold">{lesson.title || `Aula ${index + 1}`}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{lesson.description ?? "Nenhuma descrição adicionada."}</p>
-            </Card>
-          ))}
+        <TabsContent value="lessons" className="space-y-4">
+          <Dialog open={lessonDialogOpen} onOpenChange={setLessonDialogOpen}>
+            <DialogTrigger asChild>
+              <Button><Video className="h-4 w-4" /> Nova aula</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogTitle>Nova aula</DialogTitle>
+              <DialogDescription>Cadastre uma aula vinculada a esta matéria.</DialogDescription>
+              <div className="mt-6 space-y-4">
+                <label className="block text-sm font-semibold">
+                  Titulo
+                  <Input value={lessonTitle} onChange={(event) => setLessonTitle(event.target.value)} className="mt-2" />
+                </label>
+                <label className="block text-sm font-semibold">
+                  Data e hora
+                  <Input type="datetime-local" value={lessonStartsAt} onChange={(event) => setLessonStartsAt(event.target.value)} className="mt-2" />
+                </label>
+                <label className="block text-sm font-semibold">
+                  Descrição
+                  <textarea
+                    value={lessonDescription}
+                    onChange={(event) => setLessonDescription(event.target.value)}
+                    className="mt-2 w-full rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm text-foreground outline-none focus:border-vault-mint"
+                    rows={3}
+                  />
+                </label>
+                <div className="flex justify-end gap-2">
+                  <Button variant="secondary" onClick={() => setLessonDialogOpen(false)}>Cancelar</Button>
+                  <Button onClick={handleNewLesson} disabled={!lessonTitle.trim() || !lessonStartsAt}>Salvar aula</Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <div className="grid gap-4 md:grid-cols-2">
+            {((classroom.lessons?.length ? classroom.lessons : [{ id: "empty-lesson", classroomId: classroom.id, title: "Sem aulas cadastradas", startsAt: "" }]) as Lesson[]).map((lesson, index) => (
+              <Card key={lesson.id} className="p-5">
+                <Video className="h-5 w-5 text-vault-mint" />
+                <h3 className="mt-4 font-semibold">{lesson.title || `Aula ${index + 1}`}</h3>
+                <p className="mt-2 text-sm text-muted-foreground">{lesson.description ?? "Nenhuma descrição adicionada."}</p>
+              </Card>
+            ))}
+          </div>
         </TabsContent>
         <TabsContent value="notes">{scopedNotes.length ? <NotesList notes={scopedNotes} /> : <p className="text-sm text-muted-foreground">Crie uma nota para começar a mapear sua sala.</p>}</TabsContent>
         <TabsContent value="tasks">{scopedTasks.length ? <TaskList tasks={scopedTasks} /> : <p className="text-sm text-muted-foreground">Sem tarefas para esta sala.</p>}</TabsContent>

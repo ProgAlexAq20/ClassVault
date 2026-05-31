@@ -9,6 +9,7 @@ import { FileDropzone } from "@/modules/files/components/FileDropzone";
 import { cn } from "@/shared/utils/cn";
 import { useAuthStore } from "@/modules/auth/store/auth.store";
 import { useNavigationStore } from "@/shared/store/navigation.store";
+import { useVaultDataStore } from "@/shared/store/vault-data.store";
 
 const providers: Array<{ id: AiProviderId; label: string }> = [
   { id: "openai", label: "OpenAI" },
@@ -29,7 +30,16 @@ export function SummaryStudio() {
   const generator = useSummaryGenerator();
   const { paymentStatus } = useAuthStore();
   const setRoute = useNavigationStore((state) => state.setRoute);
+  const selectedClassroomId = useNavigationStore((state) => state.selectedClassroomId);
+  const classrooms = useVaultDataStore((state) => state.classrooms);
+  const addFile = useVaultDataStore((state) => state.addFile);
+  const classroomId = selectedClassroomId ?? classrooms[0]?.id;
   const isPremiumLocked = paymentStatus !== "active";
+
+  async function handleFileUpload(files: File[]) {
+    if (!classroomId) return;
+    await Promise.all(files.map((file) => addFile({ classroomId, file })));
+  }
 
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
@@ -51,7 +61,7 @@ export function SummaryStudio() {
             ))}
           </div>
           <ApiKeyVault provider={provider} />
-          <FileDropzone />
+          <FileDropzone onUpload={classroomId ? handleFileUpload : undefined} />
           <textarea
             className="focus-ring min-h-44 w-full resize-none rounded-xl border border-white/10 bg-white/[0.055] p-4 text-sm text-foreground placeholder:text-muted-foreground"
             placeholder="Cole aqui o texto da aula, briefing, transcrição ou conteúdo extraído de um arquivo..."
@@ -85,10 +95,10 @@ export function SummaryStudio() {
           </div>
           <Button
             className="w-full"
-            disabled={!input.trim() || generator.isPending || isPremiumLocked}
-            onClick={() => generator.mutate({ provider, mode, input, sourceName: "Entrada manual" })}
+            disabled={!input.trim() || generator.isPending || isPremiumLocked || !classroomId}
+            onClick={() => classroomId && generator.mutate({ provider, mode, input, classroomId, sourceName: "Entrada manual" })}
           >
-            {generator.isPending ? "Gerando..." : isPremiumLocked ? "Atualize para gerar" : "Gerar resumo"}
+            {generator.isPending ? "Gerando..." : isPremiumLocked ? "Atualize para gerar" : !classroomId ? "Crie uma materia antes" : "Gerar resumo"}
           </Button>
           {isPremiumLocked && (
             <Button variant="secondary" className="w-full" onClick={() => setRoute("premium")}>Ir para Premium</Button>
