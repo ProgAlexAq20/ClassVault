@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "overrides": {
+    "serialize-javascript": "^6.0.2"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
