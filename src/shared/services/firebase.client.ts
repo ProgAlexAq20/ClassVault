@@ -1,6 +1,8 @@
 import { initializeApp, type FirebaseApp, type FirebaseOptions } from "firebase/app";
 import { getAnalytics, isSupported, type Analytics } from "firebase/analytics";
 import { getAuth, type Auth } from "firebase/auth";
+import { getFirestore, type Firestore } from "firebase/firestore/lite";
+import { getStorage, type FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig: FirebaseOptions = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -24,8 +26,16 @@ function isConfigured(config: FirebaseOptions): boolean {
   );
 }
 
-function parseEnvList(value?: string) {
-  return (value || "").split(",").map((s) => s.trim()).filter(Boolean);
+function parseEnvList(value: string) {
+  return value.split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function originFromUrl(value: string) {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return value;
+  }
 }
 
 function currentOrigin(): string | null {
@@ -36,9 +46,8 @@ function currentOrigin(): string | null {
   }
 }
 
-const allowedOrigins = parseEnvList(import.meta.env.VITE_ALLOWED_ORIGINS) || [];
-if (import.meta.env.VITE_APP_URL) allowedOrigins.push(String(import.meta.env.VITE_APP_URL));
-// always allow localhost dev ports commonly used with Vite
+const allowedOrigins = parseEnvList(import.meta.env.VITE_ALLOWED_ORIGINS);
+if (import.meta.env.VITE_APP_URL) allowedOrigins.push(originFromUrl(import.meta.env.VITE_APP_URL));
 allowedOrigins.push("http://localhost:5173", "http://localhost:5174");
 
 const origin = currentOrigin();
@@ -52,9 +61,23 @@ export const firebaseApp: FirebaseApp | null = firebaseConfigError ? null : init
 
 export const firebaseAuth: Auth | null = firebaseApp ? getAuth(firebaseApp) : null;
 
+export const firebaseFirestore: Firestore | null = firebaseApp ? getFirestore(firebaseApp) : null;
+
+export const firebaseStorage: FirebaseStorage | null = firebaseApp ? getStorage(firebaseApp) : null;
+
 export const firebaseAnalytics: Promise<Analytics | null> =
   firebaseApp && firebaseConfig.measurementId
     ? isSupported()
         .then((supported) => (supported ? getAnalytics(firebaseApp) : null))
         .catch(() => null)
     : Promise.resolve(null);
+
+export function requireFirestore() {
+  if (!firebaseFirestore) throw new Error(firebaseConfigError ?? "Firestore nao esta configurado.");
+  return firebaseFirestore;
+}
+
+export function requireStorage() {
+  if (!firebaseStorage) throw new Error(firebaseConfigError ?? "Firebase Storage nao esta configurado.");
+  return firebaseStorage;
+}

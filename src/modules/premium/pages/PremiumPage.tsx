@@ -59,7 +59,7 @@ export function PremiumPage() {
               <div className="grid gap-3 rounded-3xl bg-white/5 p-4 text-sm text-foreground">
                 <p className="font-semibold">O que acompanha:</p>
                 <ul className="ml-4 list-disc space-y-2 text-muted-foreground">
-                  <li>Dados locais separados por conta Firebase.</li>
+                  <li>Dados sincronizados por conta Firebase.</li>
                   <li>IA completa para resumos e planos de estudo.</li>
                   <li>Sem limites de criação de matérias, arquivos e notas.</li>
                 </ul>

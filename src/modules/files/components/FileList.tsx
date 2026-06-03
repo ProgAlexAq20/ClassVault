@@ -1,6 +1,7 @@
-import { FileText, Image, Sheet } from "lucide-react";
+import { Download, FileText, Image, Sheet, Trash2 } from "lucide-react";
 import type { VaultFile } from "@/modules/files/types/file.types";
 import { Card } from "@/shared/components/ui/card";
+import { Button } from "@/shared/components/ui/button";
 
 const iconMap = {
   pdf: FileText,
@@ -10,7 +11,7 @@ const iconMap = {
   sheet: Sheet
 };
 
-export function FileList({ files }: { files: VaultFile[] }) {
+export function FileList({ files, onDelete }: { files: VaultFile[]; onDelete?: (id: string) => Promise<void> | void }) {
   return (
     <div className="space-y-3">
       {files.map((file) => {
@@ -23,6 +24,20 @@ export function FileList({ files }: { files: VaultFile[] }) {
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{file.name}</p>
               <p className="text-xs text-muted-foreground">{file.category} · {file.size} · {file.createdAt}</p>
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {file.downloadUrl && (
+                <Button asChild variant="secondary" size="icon" aria-label={`Baixar ${file.name}`}>
+                  <a href={file.downloadUrl} target="_blank" rel="noreferrer">
+                    <Download className="h-4 w-4" />
+                  </a>
+                </Button>
+              )}
+              {onDelete && (
+                <Button variant="ghost" size="icon" aria-label={`Remover ${file.name}`} onClick={() => void onDelete(file.id)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </Card>
         );

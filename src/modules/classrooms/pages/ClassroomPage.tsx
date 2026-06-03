@@ -26,6 +26,7 @@ export function ClassroomPage() {
   const addNote = useVaultDataStore((state) => state.addNote);
   const addTask = useVaultDataStore((state) => state.addTask);
   const addFile = useVaultDataStore((state) => state.addFile);
+  const removeFile = useVaultDataStore((state) => state.removeFile);
   const addLesson = useVaultDataStore((state) => state.addLesson);
   const editClassroom = useVaultDataStore((state) => state.editClassroom);
   const removeClassroom = useVaultDataStore((state) => state.removeClassroom);
@@ -295,7 +296,7 @@ export function ClassroomPage() {
               </DialogTrigger>
               <DialogContent>
                 <DialogTitle>Tem certeza que deseja excluir esta matéria?</DialogTitle>
-                <DialogDescription>Essa ação removerá a sala e o conteúdo vinculado localmente. Confirme apenas se tiver certeza.</DialogDescription>
+                <DialogDescription>Essa ação removerá a sala e o conteúdo vinculado da sua conta. Confirme apenas se tiver certeza.</DialogDescription>
                 <div className="mt-6 flex justify-end gap-3">
                   <Button variant="secondary" onClick={() => setDeleteOpen(false)}>Cancelar</Button>
                   <Button className="bg-rose-500 text-foreground hover:bg-rose-400" onClick={handleDeleteClassroom}>Excluir</Button>
@@ -318,11 +319,11 @@ export function ClassroomPage() {
         </TabsList>
 
         <TabsContent value="overview" className="grid gap-5 xl:grid-cols-3">
-          <Card><CardHeader><CardTitle>Arquivos recentes</CardTitle></CardHeader><CardContent>{scopedFiles.length ? <FileList files={scopedFiles} /> : <p className="text-sm text-muted-foreground">Nenhum arquivo nesta sala.</p>}</CardContent></Card>
+          <Card><CardHeader><CardTitle>Arquivos recentes</CardTitle></CardHeader><CardContent>{scopedFiles.length ? <FileList files={scopedFiles} onDelete={removeFile} /> : <p className="text-sm text-muted-foreground">Nenhum arquivo nesta sala.</p>}</CardContent></Card>
           <Card><CardHeader><CardTitle>Notas</CardTitle></CardHeader><CardContent>{scopedNotes.length ? <NotesList notes={scopedNotes} /> : <p className="text-sm text-muted-foreground">Nenhuma nota criada ainda.</p>}</CardContent></Card>
           <Card><CardHeader><CardTitle>Trabalhos</CardTitle></CardHeader><CardContent>{scopedTasks.length ? <TaskList tasks={scopedTasks} /> : <p className="text-sm text-muted-foreground">Nenhum trabalho vinculado.</p>}</CardContent></Card>
         </TabsContent>
-        <TabsContent value="files" className="space-y-5"><FileDropzone onUpload={handleFileUpload} /><FileList files={scopedFiles} /></TabsContent>
+        <TabsContent value="files" className="space-y-5"><FileDropzone onUpload={handleFileUpload} /><FileList files={scopedFiles} onDelete={removeFile} /></TabsContent>
         <TabsContent value="lessons" className="space-y-4">
           <Dialog open={lessonDialogOpen} onOpenChange={setLessonDialogOpen}>
             <DialogTrigger asChild>

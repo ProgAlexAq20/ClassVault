@@ -4,7 +4,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
 import { useAuth } from "@/modules/auth/hooks/useAuth";
-import { searchStoredUsersByEmail, updateStoredUserPaymentStatus } from "@/modules/auth/services/firebase-auth.service";
+import { searchUsersByEmail, updateUserPaymentStatus } from "@/modules/auth/services/firebase-auth.service";
 import type { PaymentStatus } from "@/modules/auth/types/auth.types";
 
 type UserAccessRecord = {
@@ -51,7 +51,7 @@ export function AdminPage() {
     setMessage(null);
 
     try {
-      const resultsRaw = await searchStoredUsersByEmail(searchEmail);
+      const resultsRaw = await searchUsersByEmail(searchEmail);
       const results = resultsRaw.map((account) => ({
         uid: account.uid,
         email: account.email,
@@ -64,19 +64,19 @@ export function AdminPage() {
       if (results.length === 0) {
         setMessage({ type: "error", text: "Nenhum usuário encontrado para este email." });
       }
-    } catch (err) {
+    } catch {
       setMessage({ type: "error", text: "Erro ao buscar usuários." });
     } finally {
       setLoading(false);
     }
   }
 
-  function setAccountStatus(uid: string, paymentStatus: PaymentStatus) {
+  async function setAccountStatus(uid: string, paymentStatus: PaymentStatus) {
     setLoading(true);
     setMessage(null);
 
     try {
-      updateStoredUserPaymentStatus(uid, paymentStatus);
+      await updateUserPaymentStatus(uid, paymentStatus);
       setAccounts((current) => current.map((account) => (account.uid === uid ? { ...account, paymentStatus } : account)));
       setMessage({ type: "success", text: paymentStatus === "active" ? "Conta ativada com sucesso!" : "Conta voltou para beta." });
     } catch (error) {
@@ -126,7 +126,7 @@ export function AdminPage() {
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            A busca usa os usuários Firebase que já entraram neste navegador.
+            A busca consulta registros do Firestore. Em produção, apenas contas com custom claim admin devem acessar esta área.
           </p>
         </CardContent>
       </Card>

@@ -39,7 +39,7 @@ export function SettingsPage() {
           </div>
           <div className="flex items-center gap-2 rounded-xl border border-vault-mint/25 bg-vault-mint/10 p-4 text-sm text-muted-foreground">
             <ShieldCheck className="h-4 w-4 text-vault-mint" />
-            Seus dados ficam vinculados ao seu uid do Firebase neste navegador.
+            Seus dados ficam vinculados ao seu uid do Firebase e sincronizam quando houver conexão.
           </div>
         </CardContent>
       </Card>

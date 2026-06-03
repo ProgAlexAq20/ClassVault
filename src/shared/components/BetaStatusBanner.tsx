@@ -26,12 +26,12 @@ export function BetaStatusBanner() {
         <div className="flex-1">
           <p className="font-semibold">
             {paymentStatus === "beta"
-              ? "Modo Beta: dados locais"
+              ? "Modo Beta: limite de teste"
               : "Aguardando confirmação de pagamento"}
           </p>
           <p className="mt-1 text-sm opacity-90">
             {paymentStatus === "beta"
-              ? "Você está usando o ClassVault em modo beta. Seus dados ficam salvos localmente neste navegador. Atualize para premium para acessar a IA completa."
+              ? "Você está usando o ClassVault em modo beta. Seus dados sincronizam pela sua conta, com limite inicial de matérias. Atualize para premium para acessar a IA completa."
               : "Seu pagamento foi registrado. Aguardamos a confirmação para liberar o acesso premium."}
           </p>
           {paymentStatus === "beta" && (

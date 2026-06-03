@@ -50,7 +50,7 @@ export function FileDropzone({ onUpload }: FileDropzoneProps) {
         </div>
         <div className="flex-1">
           <p className="font-semibold">{isUploading ? "Enviando arquivo..." : "Arraste PDFs, DOCX, imagens ou textos"}</p>
-          <p className="mt-1 text-sm text-muted-foreground">Os arquivos sao registrados localmente com acesso isolado por usuario.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Os arquivos sao enviados ao Firebase Storage com acesso isolado por usuario.</p>
           {error && <p className="mt-2 text-sm text-rose-300">{error}</p>}
         </div>
         <div className="flex gap-2 text-vault-mint">

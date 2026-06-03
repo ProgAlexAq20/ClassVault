@@ -7,4 +7,6 @@ export type VaultFile = {
   category: "Aulas" | "Fotos" | "Trabalhos" | "Referências";
   size: string;
   createdAt: string;
+  storagePath?: string;
+  downloadUrl?: string;
 };

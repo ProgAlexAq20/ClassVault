@@ -9,7 +9,7 @@ PWA premium para organização acadêmica moderna. A interface segue uma direç�
 - Framer Motion
 - Zustand
 - TanStack Query
-- Firebase Auth
+- Firebase Auth, Firestore, Storage e Analytics
 - vite-plugin-pwa
 
 ## Arquitetura
@@ -53,11 +53,13 @@ Providers preparados:
 - Gemini
 - Groq
 
-## Firebase Auth
+## Firebase
 
-O login usa Firebase Auth com Google. A sessão é persistida pelo SDK do Firebase e os dados do app ficam separados por `uid` no armazenamento local do navegador.
+O login usa Firebase Auth com Google. A sessão é persistida pelo SDK do Firebase e os dados do app ficam separados por `uid` no Firestore, com cache local apenas para leitura rápida e fallback offline.
 
-Para liberar o painel admin local, preencha `VITE_FIREBASE_ADMIN_EMAILS` com emails separados por vírgula.
+Para liberar o painel admin em produção, aplique custom claim `admin: true` no usuário por uma função server-side confiável.
+
+As regras versionadas em `firestore.rules` e `storage.rules` isolam dados e arquivos por `request.auth.uid`.
 
 ## PWA e offline
 
@@ -94,21 +96,16 @@ Configure `.env` a partir de `.env.example` com as variáveis do Firebase.
 - **Não comitar segredos:** As variáveis do Firebase ficam em `.env*` e **não** devem ser commitadas. O repositório já ignora `.env`.
 - **HSTS e headers:** Ao publicar (Netlify, Vercel, Cloud Run, etc.), ative HSTS, CSP e outros headers no nível do host para proteção adicional.
 
-## Persistência de usuários e webhooks
+## Persistência e webhooks
 
-O projeto agora persiste registros de acesso dos usuários na coleção `userAccess` do Firestore quando o Firebase estiver configurado. Além disso há um handler de webhook (`src/api/webhooks/pixWebhook.ts`) que pode ser implantado como função serverless para atualizar o `paymentStatus`.
+O projeto persiste registros de acesso dos usuários na coleção `userAccess` do Firestore e dados acadêmicos em subcoleções `users/{uid}/...`.
 
 Passos rápidos para ativar em produção:
 
-- Configure Firestore no Firebase Console e ajuste regras para proteger a coleção `userAccess` (leitura/escrita restrita a contas administrativas ou funções serverless).
-- Para o webhook (Cloud Function / Cloud Run / outro), defina a variável de ambiente `FIREBASE_SERVICE_ACCOUNT_JSON` com o conteúdo JSON da service account (não comite isso). Exemplo (Unix):
-
-```bash
-export FIREBASE_SERVICE_ACCOUNT_JSON='{"type":"service_account", ...}'
-```
-
-- Ao receber um webhook, o handler tenta identificar o usuário por `uid` ou por `email` no payload e marca `paymentStatus` como `active`.
+- Publique `firestore.rules` e `storage.rules` pelo Firebase CLI.
+- Configure um endpoint server-side confiável para webhooks Pix e atualize `userAccess/{uid}.paymentStatus` com Firebase Admin fora do bundle frontend.
+- Use `src/api/webhooks/pixWebhook.ts` como contrato tipado de payload/resposta para a integração serverless.
 
 Segurança:
-- Use regras do Firestore para impedir que clientes atualizem `paymentStatus` diretamente.
+- Use regras do Firestore para impedir que clientes ativem `paymentStatus` diretamente.
 - Proteja o endpoint do webhook com validação de assinatura do provedor de pagamento.

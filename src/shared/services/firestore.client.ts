@@ -1,6 +1,6 @@
-import { firebaseApp } from "./firebase.client";
-import { getFirestore, type Firestore } from "firebase/firestore";
+import { firebaseFirestore } from "@/shared/services/firebase.client";
+import type { Firestore } from "firebase/firestore/lite";
 
-export const firestore: Firestore | null = firebaseApp ? getFirestore(firebaseApp) : null;
+export const firestore: Firestore | null = firebaseFirestore;
 
 export default firestore;

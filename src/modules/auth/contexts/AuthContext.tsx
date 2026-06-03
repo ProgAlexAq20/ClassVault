@@ -1,21 +1,21 @@
 import { createContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getErrorMessage, logAppError } from "@/shared/services/app-error";
 import {
-  ensureStoredUser,
+  loadUserAccess,
+  requestPremiumReview as requestPremiumReviewForUser,
   signInWithGooglePopup,
   signOutOfFirebase,
-  updateStoredUserPaymentStatus,
   watchFirebaseAuth
 } from "@/modules/auth/services/firebase-auth.service";
 import type { AuthContextValue, PaymentStatus } from "@/modules/auth/types/auth.types";
 import type { User } from "firebase/auth";
+import { useVaultDataStore } from "@/shared/store/vault-data.store";
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
 const defaultPaymentStatus: PaymentStatus = "beta";
 
-async function clearVaultData() {
-  const { useVaultDataStore } = await import("@/shared/store/vault-data.store");
+function clearVaultData() {
   useVaultDataStore.getState().clearUserData();
 }
 
@@ -27,24 +27,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
+    let active = true;
+
     const unsubscribe = watchFirebaseAuth((currentUser) => {
-      setUser(currentUser);
-      setLoading(false);
-      setError(null);
+      setLoading(true);
 
       if (!currentUser) {
+        if (!active) return;
+        setUser(null);
+        setLoading(false);
+        setError(null);
         setPaymentStatus(defaultPaymentStatus);
         setIsAdmin(false);
-        void clearVaultData();
+        clearVaultData();
         return;
       }
 
-      const storedUser = ensureStoredUser(currentUser);
-      setPaymentStatus(storedUser.paymentStatus);
-      setIsAdmin(storedUser.isAdmin);
+      void loadUserAccess(currentUser)
+        .then((access) => {
+          if (!active) return;
+          setUser(currentUser);
+          setPaymentStatus(access.paymentStatus);
+          setIsAdmin(access.isAdmin);
+          setError(null);
+        })
+        .catch((authError) => {
+          if (!active) return;
+          logAppError("auth.restoreSession", authError, { userId: currentUser.uid });
+          setUser(currentUser);
+          setPaymentStatus(defaultPaymentStatus);
+          setIsAdmin(false);
+          setError(getErrorMessage(authError));
+        })
+        .finally(() => {
+          if (active) setLoading(false);
+        });
     });
 
-    return unsubscribe;
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, []);
 
   const value = useMemo<AuthContextValue>(
@@ -59,10 +82,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setError(null);
         try {
           const signedInUser = await signInWithGooglePopup();
-          const storedUser = ensureStoredUser(signedInUser);
+          const access = await loadUserAccess(signedInUser);
           setUser(signedInUser);
-          setPaymentStatus(storedUser.paymentStatus);
-          setIsAdmin(storedUser.isAdmin);
+          setPaymentStatus(access.paymentStatus);
+          setIsAdmin(access.isAdmin);
         } catch (authError) {
           logAppError("auth.signInWithGoogle", authError);
           setError(getErrorMessage(authError));
@@ -74,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut: async () => {
         try {
           await signOutOfFirebase();
-          await clearVaultData();
+          clearVaultData();
           setUser(null);
           setPaymentStatus(defaultPaymentStatus);
           setIsAdmin(false);
@@ -88,8 +111,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requestPremiumReview: async () => {
         if (!user) throw new Error("Sessao expirada.");
         try {
-          const storedUser = updateStoredUserPaymentStatus(user.uid, "pending");
-          setPaymentStatus(storedUser.paymentStatus);
+          const access = await requestPremiumReviewForUser(user.uid);
+          setPaymentStatus(access.paymentStatus);
           setError(null);
         } catch (authError) {
           logAppError("auth.requestPremiumReview", authError, { userId: user.uid });

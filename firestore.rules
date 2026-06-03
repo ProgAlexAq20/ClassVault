@@ -1,0 +1,105 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return signedIn() && request.auth.token.admin == true;
+    }
+
+    function validOwnerCreate(uid) {
+      return request.resource.data.ownerId == uid;
+    }
+
+    function validOwnerUpdate(uid) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId'])
+        && resource.data.ownerId == uid;
+    }
+
+    function ownUserAccess(uid) {
+      return request.auth.uid == uid;
+    }
+
+    match /userAccess/{uid} {
+      allow get: if signedIn() && (ownUserAccess(uid) || isAdmin());
+      allow list: if isAdmin();
+      allow create: if signedIn()
+        && ownUserAccess(uid)
+        && request.resource.data.uid == uid
+        && request.resource.data.paymentStatus == 'beta'
+        && request.resource.data.isAdmin == isAdmin();
+      allow update: if isAdmin()
+        || (
+          signedIn()
+          && ownUserAccess(uid)
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.isAdmin == resource.data.isAdmin
+          && (
+            request.resource.data.paymentStatus == resource.data.paymentStatus
+            || (resource.data.paymentStatus == 'beta' && request.resource.data.paymentStatus == 'pending')
+          )
+        );
+      allow delete: if false;
+    }
+
+    match /users/{uid}/classrooms/{docId} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) && validOwnerCreate(uid);
+      allow update: if isOwner(uid) && validOwnerUpdate(uid);
+      allow delete: if isOwner(uid);
+    }
+
+    match /users/{uid}/lessons/{docId} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) && validOwnerCreate(uid);
+      allow update: if isOwner(uid) && validOwnerUpdate(uid);
+      allow delete: if isOwner(uid);
+    }
+
+    match /users/{uid}/notes/{docId} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) && validOwnerCreate(uid);
+      allow update: if isOwner(uid) && validOwnerUpdate(uid);
+      allow delete: if isOwner(uid);
+    }
+
+    match /users/{uid}/files/{docId} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) && validOwnerCreate(uid);
+      allow update: if isOwner(uid) && validOwnerUpdate(uid);
+      allow delete: if isOwner(uid);
+    }
+
+    match /users/{uid}/tasks/{docId} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) && validOwnerCreate(uid);
+      allow update: if isOwner(uid) && validOwnerUpdate(uid);
+      allow delete: if isOwner(uid);
+    }
+
+    match /users/{uid}/events/{docId} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) && validOwnerCreate(uid);
+      allow update: if isOwner(uid) && validOwnerUpdate(uid);
+      allow delete: if isOwner(uid);
+    }
+
+    match /users/{uid}/summaries/{docId} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) && validOwnerCreate(uid);
+      allow update: if isOwner(uid) && validOwnerUpdate(uid);
+      allow delete: if isOwner(uid);
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

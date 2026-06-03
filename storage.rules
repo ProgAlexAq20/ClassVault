@@ -1,0 +1,29 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function validUpload() {
+      return request.resource.size < 20 * 1024 * 1024
+        && request.resource.contentType.matches('application/pdf|application/vnd.openxmlformats-officedocument.wordprocessingml.document|image/.*|text/plain');
+    }
+
+    match /users/{uid}/files/{allPaths=**} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) && validUpload();
+      allow update: if false;
+      allow delete: if isOwner(uid);
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

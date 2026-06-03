@@ -17,6 +17,7 @@ export default defineConfig({
         name: "ClassVault",
         short_name: "ClassVault",
         description: "Organize. Estude. Conquiste.",
+        lang: "pt-BR",
         theme_color: "#0f1720",
         background_color: "#0f1720",
         display: "standalone",
@@ -63,6 +64,16 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src")
+    }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes("node_modules/firebase") || id.includes("node_modules/@firebase")) return "firebase";
+          if (id.includes("node_modules")) return "vendor";
+        }
+      }
     }
   }
 });
