@@ -93,3 +93,22 @@ Configure `.env` a partir de `.env.example` com as variáveis do Firebase.
 - **VITE_ALLOWED_ORIGINS:** preencha no `.env` com as origins permitidas para evitar inicializar o Firebase em domínios inesperados.
 - **Não comitar segredos:** As variáveis do Firebase ficam em `.env*` e **não** devem ser commitadas. O repositório já ignora `.env`.
 - **HSTS e headers:** Ao publicar (Netlify, Vercel, Cloud Run, etc.), ative HSTS, CSP e outros headers no nível do host para proteção adicional.
+
+## Persistência de usuários e webhooks
+
+O projeto agora persiste registros de acesso dos usuários na coleção `userAccess` do Firestore quando o Firebase estiver configurado. Além disso há um handler de webhook (`src/api/webhooks/pixWebhook.ts`) que pode ser implantado como função serverless para atualizar o `paymentStatus`.
+
+Passos rápidos para ativar em produção:
+
+- Configure Firestore no Firebase Console e ajuste regras para proteger a coleção `userAccess` (leitura/escrita restrita a contas administrativas ou funções serverless).
+- Para o webhook (Cloud Function / Cloud Run / outro), defina a variável de ambiente `FIREBASE_SERVICE_ACCOUNT_JSON` com o conteúdo JSON da service account (não comite isso). Exemplo (Unix):
+
+```bash
+export FIREBASE_SERVICE_ACCOUNT_JSON='{"type":"service_account", ...}'
+```
+
+- Ao receber um webhook, o handler tenta identificar o usuário por `uid` ou por `email` no payload e marca `paymentStatus` como `active`.
+
+Segurança:
+- Use regras do Firestore para impedir que clientes atualizem `paymentStatus` diretamente.
+- Proteja o endpoint do webhook com validação de assinatura do provedor de pagamento.
