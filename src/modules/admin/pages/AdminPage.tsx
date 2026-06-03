@@ -1,26 +1,27 @@
 import { useState } from "react";
-import { CheckCircle2, Search, User, CreditCard, Clock, AlertCircle, Lock } from "lucide-react";
+import { AlertCircle, CheckCircle2, Clock, CreditCard, Lock, Search, User } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Input } from "@/shared/components/ui/input";
-import { useAuthStore } from "@/modules/auth/store/auth.store";
-import { supabase } from "@/shared/services/supabase.client";
+import { useAuth } from "@/modules/auth/hooks/useAuth";
+import { searchStoredUsersByEmail, updateStoredUserPaymentStatus } from "@/modules/auth/services/firebase-auth.service";
 import type { PaymentStatus } from "@/modules/auth/types/auth.types";
 
-type Profile = {
-  id: string;
-  email: string;
-  payment_status: PaymentStatus;
-  created_at: string;
+type UserAccessRecord = {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  paymentStatus: PaymentStatus;
+  createdAt: string;
 };
 
 export function AdminPage() {
-  const { isAdmin } = useAuthStore();
+  const { isAdmin } = useAuth();
   const [searchEmail, setSearchEmail] = useState("");
-  const [profiles, setProfiles] = useState<Profile[]>([]);
+  const [accounts, setAccounts] = useState<UserAccessRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  
+
   if (!isAdmin) {
     return (
       <div className="grid min-h-[60vh] place-items-center px-4 pb-24 text-center">
@@ -36,7 +37,7 @@ export function AdminPage() {
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               <Button onClick={() => window.history.back()}>Voltar</Button>
-              <Button variant="secondary" onClick={() => window.location.href = "/"}>Ir para Dashboard</Button>
+              <Button variant="secondary" onClick={() => { window.location.href = "/"; }}>Ir para Dashboard</Button>
             </div>
           </div>
         </Card>
@@ -44,82 +45,36 @@ export function AdminPage() {
     );
   }
 
-  async function searchProfiles() {
-    if (!searchEmail.trim() || !supabase) return;
+  function searchAccounts() {
+    if (!searchEmail.trim()) return;
     setLoading(true);
     setMessage(null);
 
-    try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, email, payment_status, created_at")
-        .ilike("email", `%${searchEmail.trim().toLowerCase()}%`)
-        .limit(10);
+    const results = searchStoredUsersByEmail(searchEmail).map((account) => ({
+      uid: account.uid,
+      email: account.email,
+      displayName: account.displayName,
+      paymentStatus: account.paymentStatus,
+      createdAt: account.createdAt
+    }));
 
-      if (error) throw error;
-
-      // Enrich with email from auth (this is a simplified version)
-      const enrichedProfiles: Profile[] = (data || []).map((p: any) => ({
-        id: p.id,
-        email: p.email ?? "email indisponivel",
-        payment_status: p.payment_status as PaymentStatus,
-        created_at: p.created_at
-      }));
-
-      setProfiles(enrichedProfiles);
-      if (enrichedProfiles.length === 0) {
-        setMessage({ type: "error", text: "Nenhum perfil encontrado para este email." });
-      }
-    } catch (err: any) {
-      setMessage({ type: "error", text: `Erro ao buscar: ${err.message}` });
-    } finally {
-      setLoading(false);
+    setAccounts(results);
+    if (results.length === 0) {
+      setMessage({ type: "error", text: "Nenhum usuário local encontrado para este email." });
     }
+    setLoading(false);
   }
 
-  async function activatePremium(userId: string) {
-    if (!supabase) return;
+  function setAccountStatus(uid: string, paymentStatus: PaymentStatus) {
     setLoading(true);
     setMessage(null);
 
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ payment_status: "active" })
-        .eq("id", userId);
-
-      if (error) throw error;
-
-      setProfiles(profiles.map(p => 
-        p.id === userId ? { ...p, payment_status: "active" as PaymentStatus } : p
-      ));
-      setMessage({ type: "success", text: "Conta ativada com sucesso!" });
-    } catch (err: any) {
-      setMessage({ type: "error", text: `Erro ao ativar: ${err.message}` });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function deactivatePremium(userId: string) {
-    if (!supabase) return;
-    setLoading(true);
-    setMessage(null);
-
-    try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({ payment_status: "beta" })
-        .eq("id", userId);
-
-      if (error) throw error;
-
-      setProfiles(profiles.map(p => 
-        p.id === userId ? { ...p, payment_status: "beta" as PaymentStatus } : p
-      ));
-      setMessage({ type: "success", text: "Conta desativada." });
-    } catch (err: any) {
-      setMessage({ type: "error", text: `Erro ao desativar: ${err.message}` });
+      updateStoredUserPaymentStatus(uid, paymentStatus);
+      setAccounts((current) => current.map((account) => (account.uid === uid ? { ...account, paymentStatus } : account)));
+      setMessage({ type: "success", text: paymentStatus === "active" ? "Conta ativada com sucesso!" : "Conta voltou para beta." });
+    } catch (error) {
+      setMessage({ type: "error", text: error instanceof Error ? error.message : "Erro ao atualizar usuário." });
     } finally {
       setLoading(false);
     }
@@ -153,57 +108,59 @@ export function AdminPage() {
           <div className="flex gap-2">
             <Input
               value={searchEmail}
-              onChange={(e) => setSearchEmail(e.target.value)}
+              onChange={(event) => setSearchEmail(event.target.value)}
               placeholder="email@exemplo.com"
-              onKeyDown={(e) => e.key === "Enter" && searchProfiles()}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") searchAccounts();
+              }}
             />
-            <Button onClick={searchProfiles} disabled={loading || !searchEmail.trim()}>
+            <Button onClick={searchAccounts} disabled={loading || !searchEmail.trim()}>
               <Search className="h-4 w-4" />
               {loading ? "Buscando..." : "Buscar"}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Digite o email do usuário para localizar sua conta e gerenciar o status de pagamento.
+            A busca usa os usuários Firebase que já entraram neste navegador.
           </p>
         </CardContent>
       </Card>
 
-      {profiles.length > 0 && (
+      {accounts.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Resultados</CardTitle>
           </CardHeader>
-          <CardContent>
-            {profiles.map((profile) => (
+          <CardContent className="space-y-3">
+            {accounts.map((account) => (
               <div
-                key={profile.id}
-                className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.055] p-4"
+                key={account.uid}
+                className="flex flex-col gap-4 rounded-xl border border-white/10 bg-white/[0.055] p-4 sm:flex-row sm:items-center sm:justify-between"
               >
                 <div className="flex items-center gap-3">
                   <div className="grid h-10 w-10 place-items-center rounded-full bg-white/10">
                     <User className="h-5 w-5 text-vault-mint" />
                   </div>
                   <div>
-                    <p className="font-semibold">{profile.email}</p>
-                    <p className="text-xs text-muted-foreground">ID: {profile.id}</p>
+                    <p className="font-semibold">{account.email ?? "email indisponivel"}</p>
+                    <p className="text-xs text-muted-foreground">UID: {account.uid}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-3">
                   <div
                     className={`flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold ${
-                      profile.payment_status === "active"
+                      account.paymentStatus === "active"
                         ? "bg-vault-mint/10 text-vault-mint"
-                        : profile.payment_status === "pending"
-                        ? "bg-amber-400/10 text-amber-400"
-                        : "bg-white/10 text-muted-foreground"
+                        : account.paymentStatus === "pending"
+                          ? "bg-amber-400/10 text-amber-400"
+                          : "bg-white/10 text-muted-foreground"
                     }`}
                   >
-                    {profile.payment_status === "active" ? (
+                    {account.paymentStatus === "active" ? (
                       <>
                         <CheckCircle2 className="h-3 w-3" />
                         Premium
                       </>
-                    ) : profile.payment_status === "pending" ? (
+                    ) : account.paymentStatus === "pending" ? (
                       <>
                         <Clock className="h-3 w-3" />
                         Pendente
@@ -215,22 +172,13 @@ export function AdminPage() {
                       </>
                     )}
                   </div>
-                  {profile.payment_status !== "active" ? (
-                    <Button
-                      size="sm"
-                      onClick={() => activatePremium(profile.id)}
-                      disabled={loading}
-                    >
+                  {account.paymentStatus !== "active" ? (
+                    <Button size="sm" onClick={() => setAccountStatus(account.uid, "active")} disabled={loading}>
                       <CreditCard className="h-3 w-3" />
                       Ativar Premium
                     </Button>
                   ) : (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={() => deactivatePremium(profile.id)}
-                      disabled={loading}
-                    >
+                    <Button size="sm" variant="secondary" onClick={() => setAccountStatus(account.uid, "beta")} disabled={loading}>
                       Revogar
                     </Button>
                   )}
@@ -247,20 +195,12 @@ export function AdminPage() {
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-muted-foreground">
           <div>
-            <p className="font-semibold text-foreground">1. Via painel admin (este painel)</p>
+            <p className="font-semibold text-foreground">1. Via painel admin</p>
             <p>Busque o email do usuário e clique em "Ativar Premium".</p>
           </div>
           <div>
-            <p className="font-semibold text-foreground">2. Via SQL direto no Supabase</p>
-            <pre className="mt-2 rounded-xl bg-vault-ink p-3 text-xs">
-{`UPDATE profiles 
-SET payment_status = 'active' 
-WHERE id = 'UUID_DO_USUARIO';`}
-            </pre>
-          </div>
-          <div>
-            <p className="font-semibold text-foreground">3. Via webhook automático (futuro)</p>
-            <p>Configure o webhook do seu gateway de pagamento para chamar o endpoint em <code className="rounded bg-white/10 px-1">src/api/webhooks/pixWebhook.ts</code></p>
+            <p className="font-semibold text-foreground">2. Via webhook automático</p>
+            <p>Configure o webhook do seu gateway de pagamento para chamar o endpoint em <code className="rounded bg-white/10 px-1">src/api/webhooks/pixWebhook.ts</code>.</p>
           </div>
         </CardContent>
       </Card>

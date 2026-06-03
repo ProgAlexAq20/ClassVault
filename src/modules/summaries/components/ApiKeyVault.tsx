@@ -36,7 +36,7 @@ export function ApiKeyVault({ provider }: { provider: AiProviderId }) {
         <Button onClick={handleSave}>Salvar chave</Button>
       </div>
       <p className="mt-2 text-xs text-muted-foreground">
-        {saved ? "Chave salva localmente no navegador." : "A chave nunca vai para o Supabase e nao fica no codigo."}
+        {saved ? "Chave salva localmente no navegador." : "A chave nunca sai do navegador e nao fica no codigo."}
       </p>
     </div>
   );

@@ -1,14 +1,26 @@
 // Stub serverless webhook handler for future Pix payment automation.
 // This file is a placeholder and should be wired to a serverless endpoint
-// or backend function to receive payment webhooks and update Supabase profiles.
+// or backend function to receive payment webhooks and update user access records.
 
-export async function handlePixWebhook(req: any, res: any) {
+type PixWebhookRequest = {
+  body?: {
+    type?: string;
+  };
+};
+
+type PixWebhookResponse = {
+  status: (code: number) => {
+    json: (body: { ok: boolean; error?: string }) => void;
+  };
+};
+
+export async function handlePixWebhook(req: PixWebhookRequest, res: PixWebhookResponse) {
   try {
     // Validate incoming event and signature here (provider specific)
     const event = req.body;
     console.log('Received Pix webhook event:', event?.type ?? 'unknown');
 
-    // TODO: verify event and update Supabase `profiles` table to set payment_status = 'active'
+    // TODO: verify event and update the user access record to set payment_status = 'active'
 
     res.status(200).json({ ok: true });
   } catch (err) {

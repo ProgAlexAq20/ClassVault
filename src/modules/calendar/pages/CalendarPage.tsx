@@ -49,7 +49,7 @@ export function CalendarPage() {
             </DialogTrigger>
             <DialogContent>
               <DialogTitle>Novo evento</DialogTitle>
-              <DialogDescription>Crie um compromisso salvo no Supabase para sua conta.</DialogDescription>
+              <DialogDescription>Crie um compromisso salvo na sua conta local do ClassVault.</DialogDescription>
               <div className="mt-6 space-y-4">
                 <label className="block text-sm font-semibold">
                   Titulo

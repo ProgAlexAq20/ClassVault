@@ -7,7 +7,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { FileDropzone } from "@/modules/files/components/FileDropzone";
 import { cn } from "@/shared/utils/cn";
-import { useAuthStore } from "@/modules/auth/store/auth.store";
+import { useAuth } from "@/modules/auth/hooks/useAuth";
 import { useNavigationStore } from "@/shared/store/navigation.store";
 import { useVaultDataStore } from "@/shared/store/vault-data.store";
 
@@ -28,7 +28,7 @@ const modes: Array<{ id: SummaryMode; label: string; icon: typeof Brain }> = [
 export function SummaryStudio() {
   const { provider, mode, input, setProvider, setMode, setInput } = useSummaryStore();
   const generator = useSummaryGenerator();
-  const { paymentStatus } = useAuthStore();
+  const { paymentStatus } = useAuth();
   const setRoute = useNavigationStore((state) => state.setRoute);
   const selectedClassroomId = useNavigationStore((state) => state.selectedClassroomId);
   const classrooms = useVaultDataStore((state) => state.classrooms);
@@ -89,7 +89,7 @@ export function SummaryStudio() {
             })}
           </div>
           <div className="rounded-3xl border border-white/10 bg-vault-ink/60 p-4 text-sm text-muted-foreground">
-            {paymentStatus === "beta" && "Modo Beta: explore a interface e acesse a estrutura do app. Atualize para usar IA completa e sincronização."}
+            {paymentStatus === "beta" && "Modo Beta: explore a interface e acesse a estrutura do app. Atualize para usar IA completa."}
             {paymentStatus === "pending" && "Pagamento registrado. Aguardando liberação para liberar o acesso premium."}
             {paymentStatus === "active" && "Acesso premium habilitado. Gere resumos com IA em sua conta."}
           </div>

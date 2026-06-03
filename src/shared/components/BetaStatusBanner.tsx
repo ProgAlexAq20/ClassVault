@@ -1,10 +1,10 @@
 import { AlertCircle, Clock } from "lucide-react";
-import { useAuthStore } from "@/modules/auth/store/auth.store";
+import { useAuth } from "@/modules/auth/hooks/useAuth";
 import { useNavigationStore } from "@/shared/store/navigation.store";
 import { Button } from "./ui/button";
 
 export function BetaStatusBanner() {
-  const { paymentStatus } = useAuthStore();
+  const { paymentStatus } = useAuth();
   const setRoute = useNavigationStore((state) => state.setRoute);
 
   if (paymentStatus === "active") return null;
@@ -26,12 +26,12 @@ export function BetaStatusBanner() {
         <div className="flex-1">
           <p className="font-semibold">
             {paymentStatus === "beta"
-              ? "Modo Beta: Dados não sincronizam"
+              ? "Modo Beta: dados locais"
               : "Aguardando confirmação de pagamento"}
           </p>
           <p className="mt-1 text-sm opacity-90">
             {paymentStatus === "beta"
-              ? "Você está usando o ClassVault em modo beta. Seus dados são salvos localmente, mas não sincronizam com a nuvem. Atualize para premium para sincronizar e acessar a IA completa."
+              ? "Você está usando o ClassVault em modo beta. Seus dados ficam salvos localmente neste navegador. Atualize para premium para acessar a IA completa."
               : "Seu pagamento foi registrado. Aguardamos a confirmação para liberar o acesso premium."}
           </p>
           {paymentStatus === "beta" && (

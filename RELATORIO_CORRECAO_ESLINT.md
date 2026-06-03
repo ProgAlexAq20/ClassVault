@@ -85,7 +85,7 @@ rules: {
 }
 ```
 
-**Motivo:** Permitir console.log para debug (logs adicionados para rastreamento do Supabase)
+**Motivo:** Permitir console.log para debug durante desenvolvimento
 
 ---
 

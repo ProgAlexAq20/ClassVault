@@ -2,13 +2,13 @@ import { useMemo, useState } from "react";
 import { Copy, Sparkles, CreditCard, ShieldCheck } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
-import { useAuthStore } from "@/modules/auth/store/auth.store";
+import { useAuth } from "@/modules/auth/hooks/useAuth";
 import { useNavigationStore } from "@/shared/store/navigation.store";
 
 const pixCode = "00020126580014br.gov.bcb.pix01365b255237-3763-4fcd-b6cc-ddc26503b67052040000530398654047.995802BR5924Alexandre Ferreira de Aq6009Sao Paulo62240520daqr294077717255092163041A6F";
 
 export function PremiumPage() {
-  const { paymentStatus, requestPremiumReview } = useAuthStore();
+  const { paymentStatus, requestPremiumReview } = useAuth();
   const setRoute = useNavigationStore((state) => state.setRoute);
   const [copySuccess, setCopySuccess] = useState(false);
   const qrDataUrl = useMemo(
@@ -49,7 +49,7 @@ export function PremiumPage() {
           <div className="flex flex-col gap-4">
             <span className="inline-flex items-center gap-2 rounded-full bg-vault-mint/10 px-3 py-2 text-sm font-semibold text-vault-mint">{statusLabel}</span>
             <p className="max-w-2xl text-sm leading-7 text-muted-foreground">
-              Desbloqueie a experiência completa do ClassVault: sincronização real, criação de matérias em nuvem, IA premium e uso permanente em todos os dispositivos.
+              Desbloqueie a experiência completa do ClassVault: IA premium, organização sem limites e uso permanente na sua conta.
             </p>
             <div className="grid gap-4 rounded-3xl border border-white/10 bg-vault-ink/50 p-6">
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -59,7 +59,7 @@ export function PremiumPage() {
               <div className="grid gap-3 rounded-3xl bg-white/5 p-4 text-sm text-foreground">
                 <p className="font-semibold">O que acompanha:</p>
                 <ul className="ml-4 list-disc space-y-2 text-muted-foreground">
-                  <li>Sincronização real com Supabase quando sua conta estiver ativa.</li>
+                  <li>Dados locais separados por conta Firebase.</li>
                   <li>IA completa para resumos e planos de estudo.</li>
                   <li>Sem limites de criação de matérias, arquivos e notas.</li>
                 </ul>

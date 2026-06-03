@@ -9,7 +9,7 @@ PWA premium para organização acadêmica moderna. A interface segue uma direç�
 - Framer Motion
 - Zustand
 - TanStack Query
-- Supabase
+- Firebase Auth
 - vite-plugin-pwa
 
 ## Arquitetura
@@ -43,7 +43,7 @@ O ClassVault usa Bring Your Own API Key:
 - a chave é colada pelo usuário
 - salva apenas localmente
 - criptografada com Web Crypto API
-- nunca salva no Supabase
+- nunca sai do navegador
 - nunca fica hardcoded
 - providers separados em `src/modules/summaries/providers`
 
@@ -53,19 +53,11 @@ Providers preparados:
 - Gemini
 - Groq
 
-## Supabase
+## Firebase Auth
 
-O schema relacional está em `supabase/schema.sql` e cobre:
+O login usa Firebase Auth com Google. A sessão é persistida pelo SDK do Firebase e os dados do app ficam separados por `uid` no armazenamento local do navegador.
 
-- classrooms
-- lessons
-- files
-- notes
-- tasks
-- events
-- summaries
-
-As políticas RLS isolam dados por usuário autenticado.
+Para liberar o painel admin local, preencha `VITE_FIREBASE_ADMIN_EMAILS` com emails separados por vírgula.
 
 ## PWA e offline
 
@@ -92,4 +84,4 @@ npm install
 npm run dev
 ```
 
-Configure `.env` a partir de `.env.example` para usar Supabase real.
+Configure `.env` a partir de `.env.example` com as variáveis do Firebase.

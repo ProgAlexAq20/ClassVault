@@ -1,31 +1,11 @@
-import { BookOpen, Lock, Mail, Sparkles } from "lucide-react";
-import { FormEvent, useState } from "react";
-import { Button } from "@/shared/components/ui/button";
+import { BookOpen } from "lucide-react";
 import { Card, CardContent } from "@/shared/components/ui/card";
-import { Input } from "@/shared/components/ui/input";
 import { Logo } from "@/shared/components/Logo";
-import { useAuthStore } from "@/modules/auth/store/auth.store";
+import { useAuth } from "@/modules/auth/hooks/useAuth";
 import { GoogleSignInButton } from "@/modules/auth/components/GoogleSignInButton";
-import type { AuthMode } from "@/modules/auth/types/auth.types";
 
 export function AuthPage() {
-  const [mode, setMode] = useState<AuthMode>("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const { loading, error, signIn, signUp, signInWithGoogle } = useAuthStore();
-
-  async function handleSubmit(event: FormEvent) {
-    event.preventDefault();
-    try {
-      if (mode === "signin") {
-        await signIn(email, password);
-        return;
-      }
-      await signUp(email, password);
-    } catch {
-      // The auth store exposes the user-facing error.
-    }
-  }
+  const { loading, error, signInWithGoogle } = useAuth();
 
   return (
     <main className="grid min-h-screen place-items-center px-4 py-10">
@@ -54,56 +34,16 @@ export function AuthPage() {
 
           <Card className="m-4 border-vault-mint/25 bg-vault-ink/70 light:bg-white">
             <CardContent className="p-6 sm:p-8">
-              <div className="mb-6 flex rounded-lg border border-border bg-white/[0.055] p-1 light:bg-emerald-50">
-                <button
-                  className={`flex-1 rounded-md px-3 py-2 text-sm font-semibold transition ${mode === "signin" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-                  onClick={() => setMode("signin")}
-                >
-                  Entrar
-                </button>
-                <button
-                  className={`flex-1 rounded-md px-3 py-2 text-sm font-semibold transition ${mode === "signup" ? "bg-primary text-primary-foreground" : "text-muted-foreground"}`}
-                  onClick={() => setMode("signup")}
-                >
-                  Criar conta
-                </button>
+              <div className="mb-6">
+                <p className="text-sm font-semibold uppercase tracking-[0.22em] text-vault-mint">Login</p>
+                <h2 className="mt-2 text-2xl font-extrabold tracking-normal">Entre com sua conta Google.</h2>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                  Sua sessão fica salva neste navegador e seus dados locais ficam vinculados ao seu Firebase uid.
+                </p>
               </div>
-
-              <form className="space-y-4" onSubmit={handleSubmit}>
-                <label className="block text-sm font-semibold">
-                  Email
-                  <div className="relative mt-2">
-                    <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input className="pl-9" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
-                  </div>
-                </label>
-                <label className="block text-sm font-semibold">
-                  Senha
-                  <div className="relative mt-2">
-                    <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input className="pl-9" type="password" minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} required />
-                  </div>
-                </label>
+              <div className="space-y-4">
                 {error && <p className="rounded-lg border border-rose-400/30 bg-rose-400/10 p-3 text-sm text-rose-300">{error}</p>}
-                <Button className="w-full" disabled={loading}>
-                  <Sparkles className="h-4 w-4" />
-                  {mode === "signin" ? "Entrar no ClassVault" : "Criar minha conta"}
-                </Button>
-              </form>
-
-              <div className="mt-6">
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-border"></div>
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-2 text-muted-foreground">ou continue com</span>
-                  </div>
-                </div>
-
-                <div className="mt-6">
-                  <GoogleSignInButton onClick={signInWithGoogle} disabled={loading} />
-                </div>
+                <GoogleSignInButton onClick={signInWithGoogle} disabled={loading} />
               </div>
             </CardContent>
           </Card>

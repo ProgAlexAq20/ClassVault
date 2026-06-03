@@ -51,7 +51,7 @@ export function GoogleSignInButton({ onClick, disabled }: GoogleSignInButtonProp
           </svg>
         )}
         <span className="text-sm font-semibold text-foreground">
-          {loading ? "Redirecionando..." : "Continuar com Google"}
+          {loading ? "Conectando..." : "Continuar com Google"}
         </span>
       </div>
     </button>

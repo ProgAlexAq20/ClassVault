@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } 
 import { AppRoute, useNavigationStore } from "@/shared/store/navigation.store";
 import { useThemeStore } from "@/shared/store/theme.store";
 import { useVaultDataStore } from "@/shared/store/vault-data.store";
-import { useAuthStore } from "@/modules/auth/store/auth.store";
+import { useAuth } from "@/modules/auth/hooks/useAuth";
 import { cn } from "@/shared/utils/cn";
 
 const navItems: Array<{ route: AppRoute; label: string; icon: typeof Home }> = [
@@ -25,7 +25,7 @@ const allNavItems = [...navItems, { route: "admin", label: "Admin", icon: User }
 const mobileNavItems = navItems.filter((item) => item.route !== "settings");
 
 function StatusBadge() {
-  const { paymentStatus } = useAuthStore();
+  const { paymentStatus } = useAuth();
   const setRoute = useNavigationStore((state) => state.setRoute);
 
   if (paymentStatus === "active") {
@@ -73,7 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const theme = useThemeStore((state) => state.theme);
   const toggleTheme = useThemeStore((state) => state.toggleTheme);
   const addQuickEntry = useVaultDataStore((state) => state.addQuickEntry);
-  const { isAdmin } = useAuthStore();
+  const { isAdmin } = useAuth();
   
   // Usa todos os itens de navegação (incluindo Admin) se for administrador
   const displayNavItems = isAdmin ? allNavItems : navItems;

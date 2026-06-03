@@ -1,20 +1,14 @@
-import type { User } from "@supabase/supabase-js";
+import type { User } from "firebase/auth";
 
-export type AuthMode = "signin" | "signup";
 export type PaymentStatus = "beta" | "pending" | "active";
 
-export type AuthState = {
+export type AuthContextValue = {
   user: User | null;
   loading: boolean;
   error: string | null;
   paymentStatus: PaymentStatus;
   isAdmin: boolean;
-  init: () => Promise<void>;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   requestPremiumReview: () => Promise<void>;
-  loadProfile: (userId: string) => Promise<void>;
-  initializeProfile: (userId: string, paymentStatus: PaymentStatus) => Promise<void>;
 };

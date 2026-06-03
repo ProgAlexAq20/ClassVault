@@ -1,12 +1,12 @@
 import { LogOut, Moon, ShieldCheck, Sun, UserRound } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
-import { useAuthStore } from "@/modules/auth/store/auth.store";
+import { useAuth } from "@/modules/auth/hooks/useAuth";
 import { useThemeStore } from "@/shared/store/theme.store";
 import { useNavigationStore } from "@/shared/store/navigation.store";
 
 export function SettingsPage() {
-  const { user, paymentStatus, signOut } = useAuthStore();
+  const { user, paymentStatus, signOut } = useAuth();
   const { theme, toggleTheme } = useThemeStore();
   const setRoute = useNavigationStore((state) => state.setRoute);
 
@@ -39,7 +39,7 @@ export function SettingsPage() {
           </div>
           <div className="flex items-center gap-2 rounded-xl border border-vault-mint/25 bg-vault-mint/10 p-4 text-sm text-muted-foreground">
             <ShieldCheck className="h-4 w-4 text-vault-mint" />
-            Seus novos dados são enviados para o Supabase quando a conta está ativa.
+            Seus dados ficam vinculados ao seu uid do Firebase neste navegador.
           </div>
         </CardContent>
       </Card>
