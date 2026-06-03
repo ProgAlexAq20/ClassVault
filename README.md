@@ -85,3 +85,11 @@ npm run dev
 ```
 
 Configure `.env` a partir de `.env.example` com as variáveis do Firebase.
+
+## Segurança recomendada (rápido)
+
+- **Authorized domains / origins:** No Firebase Console -> Authentication -> Sign-in method -> Authorized domains, adicione seus domínios (`localhost`, domínio de produção, etc.).
+- **Authorized origins/redirects no Google Cloud:** Em APIs & Services -> Credentials -> OAuth 2.0 Client IDs, configure *Authorized JavaScript origins* (ex.: `http://localhost:5173`, `https://seu-dominio.com`) e *Authorized redirect URIs* (ex.: `https://<project>.firebaseapp.com/__/auth/handler`).
+- **VITE_ALLOWED_ORIGINS:** preencha no `.env` com as origins permitidas para evitar inicializar o Firebase em domínios inesperados.
+- **Não comitar segredos:** As variáveis do Firebase ficam em `.env*` e **não** devem ser commitadas. O repositório já ignora `.env`.
+- **HSTS e headers:** Ao publicar (Netlify, Vercel, Cloud Run, etc.), ative HSTS, CSP e outros headers no nível do host para proteção adicional.

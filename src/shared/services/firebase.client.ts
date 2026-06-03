@@ -24,9 +24,29 @@ function isConfigured(config: FirebaseOptions): boolean {
   );
 }
 
-export const firebaseConfigError = isConfigured(firebaseConfig)
+function parseEnvList(value?: string) {
+  return (value || "").split(",").map((s) => s.trim()).filter(Boolean);
+}
+
+function currentOrigin(): string | null {
+  try {
+    return typeof window !== "undefined" ? window.location.origin : null;
+  } catch {
+    return null;
+  }
+}
+
+const allowedOrigins = parseEnvList(import.meta.env.VITE_ALLOWED_ORIGINS) || [];
+if (import.meta.env.VITE_APP_URL) allowedOrigins.push(String(import.meta.env.VITE_APP_URL));
+// always allow localhost dev ports commonly used with Vite
+allowedOrigins.push("http://localhost:5173", "http://localhost:5174");
+
+const origin = currentOrigin();
+const originAllowed = !origin || allowedOrigins.includes(origin);
+
+export const firebaseConfigError = isConfigured(firebaseConfig) && originAllowed
   ? null
-  : "Firebase nao esta configurado. Confira as variaveis VITE_FIREBASE_*.";
+  : `Firebase nao esta configurado corretamente. Verifique VITE_FIREBASE_* e VITE_ALLOWED_ORIGINS. Current origin: ${origin ?? "unknown"}`;
 
 export const firebaseApp: FirebaseApp | null = firebaseConfigError ? null : initializeApp(firebaseConfig);
 
