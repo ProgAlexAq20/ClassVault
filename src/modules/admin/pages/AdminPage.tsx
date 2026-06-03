@@ -45,24 +45,30 @@ export function AdminPage() {
     );
   }
 
-  function searchAccounts() {
+  async function searchAccounts() {
     if (!searchEmail.trim()) return;
     setLoading(true);
     setMessage(null);
 
-    const results = searchStoredUsersByEmail(searchEmail).map((account) => ({
-      uid: account.uid,
-      email: account.email,
-      displayName: account.displayName,
-      paymentStatus: account.paymentStatus,
-      createdAt: account.createdAt
-    }));
+    try {
+      const resultsRaw = await searchStoredUsersByEmail(searchEmail);
+      const results = resultsRaw.map((account) => ({
+        uid: account.uid,
+        email: account.email,
+        displayName: account.displayName,
+        paymentStatus: account.paymentStatus,
+        createdAt: account.createdAt
+      }));
 
-    setAccounts(results);
-    if (results.length === 0) {
-      setMessage({ type: "error", text: "Nenhum usuário local encontrado para este email." });
+      setAccounts(results);
+      if (results.length === 0) {
+        setMessage({ type: "error", text: "Nenhum usuário encontrado para este email." });
+      }
+    } catch (err) {
+      setMessage({ type: "error", text: "Erro ao buscar usuários." });
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   function setAccountStatus(uid: string, paymentStatus: PaymentStatus) {

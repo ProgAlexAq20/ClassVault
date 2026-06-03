@@ -142,21 +142,29 @@ export function updateStoredUserPaymentStatus(uid: string, paymentStatus: Paymen
   return next;
 }
 
-export function searchStoredUsersByEmail(email: string) {
-  const query = email.trim().toLowerCase();
-  if (!query) return [];
-  // Prefer server-side search via Firestore if available (exact match)
+export async function searchStoredUsersByEmail(email: string) {
+  const q = email.trim().toLowerCase();
+  if (!q) return [];
+
+  // If Firestore available, try exact-match query
   if (firestore) {
     try {
       const col = collection(firestore, "userAccess");
-      const q = queryFn(col, "email", query);
-      // fallback if custom queryFn not available
-    } catch {
-      // ignore and fallback to local
+      const firestoreQuery = queryFn(col, "email", q);
+      const snapshot = await getDocs(firestoreQuery);
+      const results: StoredUserAccess[] = [];
+      snapshot.forEach((d) => {
+        const data = d.data();
+        if (isStoredUserAccess(data)) results.push(data as StoredUserAccess);
+      });
+      if (results.length > 0) return results;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("Firestore search failed, falling back to localStorage:", err);
     }
   }
 
-  return readStoredUsers().filter((user) => user.email?.includes(query));
+  return readStoredUsers().filter((user) => user.email?.includes(q));
 }
 
 // Helper to perform an equality query without importing Firestore query builder everywhere
