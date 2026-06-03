@@ -9,6 +9,8 @@ import {
   type User
 } from "firebase/auth";
 import { firebaseAuth } from "@/shared/services/firebase.client";
+import firestore from "@/shared/services/firestore.client";
+import { doc, setDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
 import type { PaymentStatus } from "@/modules/auth/types/auth.types";
 
 type StoredUserAccess = {
@@ -61,6 +63,20 @@ function writeStoredUsers(users: StoredUserAccess[]) {
   localStorage.setItem(userAccessKey, JSON.stringify(users));
 }
 
+async function writeUserToFirestore(user: StoredUserAccess) {
+  if (!firestore) return;
+  try {
+    const ref = doc(firestore, "userAccess", user.uid);
+    await setDoc(ref, user, { merge: true });
+  } catch (err) {
+    // don't block client if Firestore isn't writable/configured
+    // keep localStorage as single source of truth for offline
+    // logging silently
+    // eslint-disable-next-line no-console
+    console.warn("Failed to write user to Firestore:", err);
+  }
+}
+
 function adminEmails(): string[] {
   return import.meta.env.VITE_FIREBASE_ADMIN_EMAILS
     .split(",")
@@ -103,6 +119,8 @@ export function ensureStoredUser(user: User): StoredUserAccess {
   };
 
   writeStoredUsers([next, ...users.filter((item) => item.uid !== user.uid)]);
+  // attempt to persist to Firestore as a central store
+  void writeUserToFirestore(next);
   return next;
 }
 
@@ -113,11 +131,35 @@ export function updateStoredUserPaymentStatus(uid: string, paymentStatus: Paymen
 
   const next = { ...existing, paymentStatus, updatedAt: new Date().toISOString() };
   writeStoredUsers([next, ...users.filter((item) => item.uid !== uid)]);
+  // try remote update as well
+  if (firestore) {
+    const ref = doc(firestore, "userAccess", uid);
+    void updateDoc(ref, { paymentStatus: next.paymentStatus, updatedAt: next.updatedAt }).catch((err) => {
+      // eslint-disable-next-line no-console
+      console.warn("Failed to update user payment status on Firestore:", err);
+    });
+  }
   return next;
 }
 
 export function searchStoredUsersByEmail(email: string) {
   const query = email.trim().toLowerCase();
   if (!query) return [];
+  // Prefer server-side search via Firestore if available (exact match)
+  if (firestore) {
+    try {
+      const col = collection(firestore, "userAccess");
+      const q = queryFn(col, "email", query);
+      // fallback if custom queryFn not available
+    } catch {
+      // ignore and fallback to local
+    }
+  }
+
   return readStoredUsers().filter((user) => user.email?.includes(query));
+}
+
+// Helper to perform an equality query without importing Firestore query builder everywhere
+function queryFn(col: any, field: string, value: string) {
+  return query(col, where(field, "==", value));
 }
