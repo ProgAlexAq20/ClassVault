@@ -27,6 +27,17 @@ service cloud.firestore {
       return request.auth.uid == uid;
     }
 
+    function validPaymentStatus() {
+      return request.resource.data.paymentStatus == 'beta'
+        || request.resource.data.paymentStatus == 'pending'
+        || request.resource.data.paymentStatus == 'active';
+    }
+
+    function validOwnPaymentTransition() {
+      return request.resource.data.paymentStatus == resource.data.paymentStatus
+        || (resource.data.paymentStatus == 'beta' && request.resource.data.paymentStatus == 'pending');
+    }
+
     match /userAccess/{uid} {
       allow get: if signedIn() && (ownUserAccess(uid) || isAdmin());
       allow list: if isAdmin();
@@ -39,12 +50,10 @@ service cloud.firestore {
         || (
           signedIn()
           && ownUserAccess(uid)
-          && request.resource.data.uid == resource.data.uid
-          && request.resource.data.isAdmin == resource.data.isAdmin
-          && (
-            request.resource.data.paymentStatus == resource.data.paymentStatus
-            || (resource.data.paymentStatus == 'beta' && request.resource.data.paymentStatus == 'pending')
-          )
+          && request.resource.data.uid == uid
+          && request.resource.data.isAdmin == isAdmin()
+          && validPaymentStatus()
+          && validOwnPaymentTransition()
         );
       allow delete: if false;
     }

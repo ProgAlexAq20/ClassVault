@@ -8,7 +8,7 @@ import {
   type NextOrObserver,
   type User
 } from "firebase/auth";
-import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from "firebase/firestore/lite";
+import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, updateDoc, where, type DocumentData } from "firebase/firestore/lite";
 import { firebaseAuth, requireFirestore } from "@/shared/services/firebase.client";
 import type { PaymentStatus } from "@/modules/auth/types/auth.types";
 
@@ -36,6 +36,10 @@ function nowIso() {
 
 function isPaymentStatus(value: unknown): value is PaymentStatus {
   return value === "beta" || value === "pending" || value === "active";
+}
+
+function paymentStatusFromFirestore(data: DocumentData): PaymentStatus {
+  return isPaymentStatus(data.paymentStatus) ? data.paymentStatus : "beta";
 }
 
 function isUserAccessRecord(value: unknown): value is UserAccessRecord {
@@ -79,6 +83,42 @@ async function hasAdminClaim(user: User) {
   return token.claims.admin === true;
 }
 
+function accessRecordFromFirestore(user: User, data: DocumentData, admin: boolean, now: string): UserAccessRecord {
+  return {
+    uid: user.uid,
+    email: user.email?.toLowerCase() ?? (typeof data.email === "string" ? data.email : null),
+    displayName: user.displayName ?? (typeof data.displayName === "string" ? data.displayName : null),
+    photoURL: user.photoURL ?? (typeof data.photoURL === "string" ? data.photoURL : null),
+    paymentStatus: paymentStatusFromFirestore(data),
+    isAdmin: admin,
+    createdAt: typeof data.createdAt === "string" ? data.createdAt : now,
+    updatedAt: now
+  };
+}
+
+async function syncUserAccessMetadata(user: User, access: UserAccessRecord) {
+  const db = requireFirestore();
+  const ref = doc(db, "userAccess", user.uid);
+
+  try {
+    await setDoc(
+      ref,
+      {
+        uid: access.uid,
+        email: access.email,
+        displayName: access.displayName,
+        photoURL: access.photoURL,
+        isAdmin: access.isAdmin,
+        updatedAt: access.updatedAt,
+        updatedAtServer: serverTimestamp()
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.warn("[ClassVault] userAccess metadata sync failed", error);
+  }
+}
+
 export function watchFirebaseAuth(observer: NextOrObserver<User>) {
   return onAuthStateChanged(requireFirebaseAuth(), observer);
 }
@@ -100,36 +140,12 @@ export async function loadUserAccess(user: User): Promise<UserAccessRecord> {
   const db = requireFirestore();
   const ref = doc(db, "userAccess", user.uid);
   const admin = await hasAdminClaim(user);
-  const cached = cachedUser(user.uid);
   const snapshot = await getDoc(ref);
   const now = nowIso();
 
   if (snapshot.exists()) {
-    const data = snapshot.data();
-    const access: UserAccessRecord = {
-      uid: user.uid,
-      email: user.email?.toLowerCase() ?? null,
-      displayName: user.displayName,
-      photoURL: user.photoURL,
-      paymentStatus: isPaymentStatus(data.paymentStatus) ? data.paymentStatus : cached?.paymentStatus ?? "beta",
-      isAdmin: admin,
-      createdAt: typeof data.createdAt === "string" ? data.createdAt : cached?.createdAt ?? now,
-      updatedAt: now
-    };
-
-    await setDoc(
-      ref,
-      {
-        uid: access.uid,
-        email: access.email,
-        displayName: access.displayName,
-        photoURL: access.photoURL,
-        isAdmin: admin,
-        updatedAt: now,
-        updatedAtServer: serverTimestamp()
-      },
-      { merge: true }
-    );
+    const access = accessRecordFromFirestore(user, snapshot.data(), admin, now);
+    await syncUserAccessMetadata(user, access);
     writeCachedUser(access);
     return access;
   }
@@ -141,7 +157,7 @@ export async function loadUserAccess(user: User): Promise<UserAccessRecord> {
     photoURL: user.photoURL,
     paymentStatus: "beta",
     isAdmin: admin,
-    createdAt: cached?.createdAt ?? now,
+    createdAt: now,
     updatedAt: now
   };
 
@@ -154,23 +170,58 @@ export async function loadUserAccess(user: User): Promise<UserAccessRecord> {
   return access;
 }
 
-export async function requestPremiumReview(uid: string): Promise<UserAccessRecord> {
+export async function requestPremiumReview(user: User): Promise<UserAccessRecord> {
   const db = requireFirestore();
-  const ref = doc(db, "userAccess", uid);
+  const ref = doc(db, "userAccess", user.uid);
   const updatedAt = nowIso();
+  const admin = await hasAdminClaim(user);
+
+  const snapshot = await getDoc(ref);
+  if (snapshot.exists()) {
+    const data = snapshot.data();
+    if (data.paymentStatus === "active") {
+      const cached = cachedUser(user.uid);
+      const activeAccess: UserAccessRecord = {
+        uid: user.uid,
+        email: typeof data.email === "string" ? data.email : cached?.email ?? null,
+        displayName: typeof data.displayName === "string" ? data.displayName : cached?.displayName ?? null,
+        photoURL: typeof data.photoURL === "string" ? data.photoURL : cached?.photoURL ?? null,
+        paymentStatus: "active",
+        isAdmin: typeof data.isAdmin === "boolean" ? data.isAdmin : cached?.isAdmin ?? false,
+        createdAt: typeof data.createdAt === "string" ? data.createdAt : cached?.createdAt ?? updatedAt,
+        updatedAt
+      };
+      writeCachedUser(activeAccess);
+      return activeAccess;
+    }
+  } else {
+    await setDoc(ref, {
+      uid: user.uid,
+      email: user.email?.toLowerCase() ?? null,
+      displayName: user.displayName,
+      photoURL: user.photoURL,
+      paymentStatus: "beta",
+      isAdmin: admin,
+      createdAt: updatedAt,
+      updatedAt,
+      createdAtServer: serverTimestamp(),
+      updatedAtServer: serverTimestamp()
+    });
+  }
+
   await updateDoc(ref, {
     paymentStatus: "pending",
     updatedAt,
     updatedAtServer: serverTimestamp()
   });
-  const cached = cachedUser(uid);
+  const cached = cachedUser(user.uid);
   const access: UserAccessRecord = {
-    uid,
-    email: cached?.email ?? null,
-    displayName: cached?.displayName ?? null,
-    photoURL: cached?.photoURL ?? null,
+    uid: user.uid,
+    email: user.email?.toLowerCase() ?? cached?.email ?? null,
+    displayName: user.displayName ?? cached?.displayName ?? null,
+    photoURL: user.photoURL ?? cached?.photoURL ?? null,
     paymentStatus: "pending",
-    isAdmin: cached?.isAdmin ?? false,
+    isAdmin: admin,
     createdAt: cached?.createdAt ?? updatedAt,
     updatedAt
   };

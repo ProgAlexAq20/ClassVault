@@ -1,4 +1,4 @@
-import { createContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { getErrorMessage, logAppError } from "@/shared/services/app-error";
 import {
   loadUserAccess,
@@ -24,7 +24,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<PaymentStatus>(defaultPaymentStatus);
+  const [paymentStatusLoading, setPaymentStatusLoading] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+
+  const applyUserAccess = useCallback(async (currentUser: User) => {
+    setPaymentStatusLoading(true);
+    try {
+      const access = await loadUserAccess(currentUser);
+      setPaymentStatus(access.paymentStatus);
+      setIsAdmin(access.isAdmin);
+      setError(null);
+      return access;
+    } catch (authError) {
+      logAppError("auth.loadUserAccess", authError, { userId: currentUser.uid });
+      setPaymentStatus(defaultPaymentStatus);
+      setIsAdmin(false);
+      setError(getErrorMessage(authError));
+      throw authError;
+    } finally {
+      setPaymentStatusLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -38,17 +58,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
         setError(null);
         setPaymentStatus(defaultPaymentStatus);
+        setPaymentStatusLoading(false);
         setIsAdmin(false);
         clearVaultData();
         return;
       }
 
-      void loadUserAccess(currentUser)
+      void applyUserAccess(currentUser)
         .then((access) => {
           if (!active) return;
           setUser(currentUser);
-          setPaymentStatus(access.paymentStatus);
-          setIsAdmin(access.isAdmin);
           setError(null);
         })
         .catch((authError) => {
@@ -68,12 +87,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       active = false;
       unsubscribe();
     };
-  }, []);
+  }, [applyUserAccess]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    function refreshWhenVisible() {
+      if (document.visibilityState === "visible" && user) {
+        void applyUserAccess(user).catch(() => {
+          // applyUserAccess already exposes the error in context.
+        });
+      }
+    }
+
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [applyUserAccess, user]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
       loading,
+      paymentStatusLoading,
       error,
       paymentStatus,
       isAdmin,
@@ -82,7 +122,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setError(null);
         try {
           const signedInUser = await signInWithGooglePopup();
-          const access = await loadUserAccess(signedInUser);
+          const access = await applyUserAccess(signedInUser);
           setUser(signedInUser);
           setPaymentStatus(access.paymentStatus);
           setIsAdmin(access.isAdmin);
@@ -100,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           clearVaultData();
           setUser(null);
           setPaymentStatus(defaultPaymentStatus);
+          setPaymentStatusLoading(false);
           setIsAdmin(false);
           setError(null);
         } catch (authError) {
@@ -111,17 +152,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requestPremiumReview: async () => {
         if (!user) throw new Error("Sessao expirada.");
         try {
-          const access = await requestPremiumReviewForUser(user.uid);
+          setPaymentStatusLoading(true);
+          const access = await requestPremiumReviewForUser(user);
           setPaymentStatus(access.paymentStatus);
           setError(null);
         } catch (authError) {
           logAppError("auth.requestPremiumReview", authError, { userId: user.uid });
           setError(getErrorMessage(authError));
           throw authError;
+        } finally {
+          setPaymentStatusLoading(false);
         }
+      },
+      refreshAccess: async () => {
+        if (!user) throw new Error("Sessao expirada.");
+        await applyUserAccess(user);
       }
     }),
-    [error, isAdmin, loading, paymentStatus, user]
+    [applyUserAccess, error, isAdmin, loading, paymentStatus, paymentStatusLoading, user]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
