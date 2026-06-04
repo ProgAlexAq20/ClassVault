@@ -1,4 +1,4 @@
-import { KanbanSquare, Plus } from "lucide-react";
+import { CalendarClock, KanbanSquare, Plus } from "lucide-react";
 import { useState } from "react";
 import { TaskList } from "@/modules/tasks/components/TaskList";
 import { useTasks } from "@/modules/tasks/hooks/use-tasks";
@@ -12,23 +12,36 @@ export function TasksPage() {
   const [newTaskOpen, setNewTaskOpen] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskDescription, setNewTaskDescription] = useState("");
+  const [newTaskDueDate, setNewTaskDueDate] = useState(new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString().slice(0, 10));
+  const [newTaskDueTime, setNewTaskDueTime] = useState("");
+  const [filter, setFilter] = useState<"all" | "open" | "today" | "late" | "done">("all");
   const { data: tasks = [] } = useTasks();
   const classrooms = useVaultDataStore((state) => state.classrooms);
   const addTask = useVaultDataStore((state) => state.addTask);
   const editTask = useVaultDataStore((state) => state.editTask);
   const removeTask = useVaultDataStore((state) => state.removeTask);
-  const todo = tasks.filter((task) => task.status === "todo");
-  const doing = tasks.filter((task) => task.status === "doing");
-  const done = tasks.filter((task) => task.status === "done");
+  const today = new Date().toISOString().slice(0, 10);
+  const visibleTasks = tasks.filter((task) => {
+    if (filter === "open") return task.status !== "done";
+    if (filter === "today") return task.status !== "done" && task.dueDate === today;
+    if (filter === "late") return task.status !== "done" && new Date(task.dueAt).getTime() < Date.now();
+    if (filter === "done") return task.status === "done";
+    return true;
+  });
+  const overdue = visibleTasks.filter((task) => task.status !== "done" && new Date(task.dueAt).getTime() < Date.now());
+  const todayTasks = visibleTasks.filter((task) => task.status !== "done" && task.dueDate === today && new Date(task.dueAt).getTime() >= Date.now());
+  const upcoming = visibleTasks.filter((task) => task.status !== "done" && task.dueDate !== today && new Date(task.dueAt).getTime() >= Date.now());
+  const done = visibleTasks.filter((task) => task.status === "done");
 
   async function handleNewTask() {
     const title = newTaskTitle.trim();
     const classroomId = classrooms[0]?.id;
     if (!title || !classroomId) return;
     try {
-      await addTask({ classroomId, title, description: newTaskDescription });
+      await addTask({ classroomId, title, description: newTaskDescription, dueDate: newTaskDueDate, dueTime: newTaskDueTime });
       setNewTaskTitle("");
       setNewTaskDescription("");
+      setNewTaskDueTime("");
       setNewTaskOpen(false);
     } catch {
       // The store logs and exposes the sync error.
@@ -62,6 +75,16 @@ export function TasksPage() {
                   className="mt-2"
                 />
               </label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <label className="block text-sm font-semibold">
+                  Data de entrega
+                  <Input type="date" value={newTaskDueDate} onChange={(e) => setNewTaskDueDate(e.target.value)} className="mt-2" />
+                </label>
+                <label className="block text-sm font-semibold">
+                  Hora opcional
+                  <Input type="time" value={newTaskDueTime} onChange={(e) => setNewTaskDueTime(e.target.value)} className="mt-2" />
+                </label>
+              </div>
               <label className="block text-sm font-semibold">
                 Descrição
                 <textarea
@@ -79,9 +102,23 @@ export function TasksPage() {
           </DialogContent>
         </Dialog>
       </div>
-      <div className="grid gap-5 lg:grid-cols-3">
-        <Card><CardHeader><CardTitle className="flex items-center gap-2"><KanbanSquare className="h-4 w-4 text-vault-mint" />A fazer</CardTitle></CardHeader><CardContent><TaskList tasks={todo} onEdit={editTask} onDelete={removeTask} /></CardContent></Card>
-        <Card><CardHeader><CardTitle>Em andamento</CardTitle></CardHeader><CardContent><TaskList tasks={doing} onEdit={editTask} onDelete={removeTask} /></CardContent></Card>
+      <div className="flex flex-wrap gap-2">
+        {[
+          ["all", "Tudo"],
+          ["open", "Em aberto"],
+          ["today", "Hoje"],
+          ["late", "Atrasadas"],
+          ["done", "Concluídas"]
+        ].map(([id, label]) => (
+          <Button key={id} size="sm" variant={filter === id ? "default" : "secondary"} onClick={() => setFilter(id as typeof filter)}>
+            {label}
+          </Button>
+        ))}
+      </div>
+      <div className="grid gap-5 xl:grid-cols-2">
+        <Card><CardHeader><CardTitle className="flex items-center gap-2 text-rose-300"><CalendarClock className="h-4 w-4" />Atrasadas</CardTitle></CardHeader><CardContent><TaskList tasks={overdue} onEdit={editTask} onDelete={removeTask} /></CardContent></Card>
+        <Card><CardHeader><CardTitle className="flex items-center gap-2"><KanbanSquare className="h-4 w-4 text-vault-mint" />Hoje</CardTitle></CardHeader><CardContent><TaskList tasks={todayTasks} onEdit={editTask} onDelete={removeTask} /></CardContent></Card>
+        <Card><CardHeader><CardTitle>Próximas</CardTitle></CardHeader><CardContent><TaskList tasks={upcoming} onEdit={editTask} onDelete={removeTask} /></CardContent></Card>
         <Card><CardHeader><CardTitle>Concluídas</CardTitle></CardHeader><CardContent><TaskList tasks={done} onEdit={editTask} onDelete={removeTask} /></CardContent></Card>
       </div>
     </div>

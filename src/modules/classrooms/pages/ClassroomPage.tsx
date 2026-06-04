@@ -50,6 +50,8 @@ export function ClassroomPage() {
   const [notePreview, setNotePreview] = useState("");
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
+  const [taskDueDate, setTaskDueDate] = useState(new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString().slice(0, 10));
+  const [taskDueTime, setTaskDueTime] = useState("");
   const [lessonTitle, setLessonTitle] = useState("");
   const [lessonStartsAt, setLessonStartsAt] = useState("");
   const [lessonDescription, setLessonDescription] = useState("");
@@ -83,9 +85,10 @@ export function ClassroomPage() {
   async function handleNewTask() {
     if (!taskTitle.trim() || !classroom) return;
     try {
-      await addTask({ classroomId: classroom.id, title: taskTitle.trim(), description: taskDescription });
+      await addTask({ classroomId: classroom.id, title: taskTitle.trim(), description: taskDescription, dueDate: taskDueDate, dueTime: taskDueTime });
       setTaskTitle("");
       setTaskDescription("");
+      setTaskDueTime("");
       setTaskDialogOpen(false);
     } catch {
       // The store logs and exposes the sync error.
@@ -236,6 +239,16 @@ export function ClassroomPage() {
                       className="focus-ring mt-2 min-h-32 w-full resize-y rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground"
                     />
                   </label>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <label className="block text-sm font-semibold">
+                      Data de entrega
+                      <Input type="date" value={taskDueDate} onChange={(e) => setTaskDueDate(e.target.value)} className="mt-2" />
+                    </label>
+                    <label className="block text-sm font-semibold">
+                      Hora opcional
+                      <Input type="time" value={taskDueTime} onChange={(e) => setTaskDueTime(e.target.value)} className="mt-2" />
+                    </label>
+                  </div>
                   <div className="flex justify-end gap-2">
                     <Button variant="secondary" onClick={() => setTaskDialogOpen(false)}>Cancelar</Button>
                     <Button onClick={handleNewTask} disabled={!taskTitle.trim()}>Criar trabalho</Button>

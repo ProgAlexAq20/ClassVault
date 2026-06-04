@@ -14,12 +14,12 @@ export const geminiProvider: AiProvider = {
   label: "Gemini",
   async summarize(request, apiKey) {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${request.geminiModel}:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: `Modo: ${request.mode}\n${request.input}` }] }]
+          contents: [{ parts: [{ text: `Modo: ${request.mode}\nGere uma resposta com resumo, pontos principais e plano de estudo.\n\n${request.input}` }] }]
         })
       }
     );

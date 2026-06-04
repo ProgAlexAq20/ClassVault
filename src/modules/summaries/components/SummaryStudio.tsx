@@ -1,8 +1,8 @@
-import { AlertCircle, Brain, FileText, ListChecks, Loader2, Sparkles, UploadCloud } from "lucide-react";
+import { AlertCircle, Brain, FileText, ListChecks, Loader2, Paperclip, Sparkles, UploadCloud, X } from "lucide-react";
 import { useSummaryGenerator } from "@/modules/summaries/hooks/use-summary-generator";
 import { ApiKeyVault } from "@/modules/summaries/components/ApiKeyVault";
 import { useSummaryStore } from "@/modules/summaries/store/summary.store";
-import type { AiProviderId, SummaryMode } from "@/modules/summaries/types/summary.types";
+import type { AiProviderId, GeminiModelId, SummaryMode } from "@/modules/summaries/types/summary.types";
 import { Button } from "@/shared/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { FileDropzone } from "@/modules/files/components/FileDropzone";
@@ -10,11 +10,17 @@ import { cn } from "@/shared/utils/cn";
 import { useAuth } from "@/modules/auth/hooks/useAuth";
 import { useNavigationStore } from "@/shared/store/navigation.store";
 import { useVaultDataStore } from "@/shared/store/vault-data.store";
+import { useEffect, useRef, useState } from "react";
 
 const providers: Array<{ id: AiProviderId; label: string }> = [
   { id: "openai", label: "OpenAI" },
   { id: "gemini", label: "Gemini" },
   { id: "groq", label: "Groq" }
+];
+
+const geminiModels: Array<{ id: GeminiModelId; label: string; description: string }> = [
+  { id: "gemini-2.5-flash", label: "Gemini 2.5 Flash", description: "Padrao rapido para resumos e rotina de estudo." },
+  { id: "gemini-2.5-pro", label: "Gemini 2.5 Pro", description: "Mais forte para analises longas e raciocinio." }
 ];
 
 const modes: Array<{ id: SummaryMode; label: string; icon: typeof Brain }> = [
@@ -26,7 +32,7 @@ const modes: Array<{ id: SummaryMode; label: string; icon: typeof Brain }> = [
 ];
 
 export function SummaryStudio() {
-  const { provider, mode, input, setProvider, setMode, setInput } = useSummaryStore();
+  const { provider, geminiModel, mode, input, setProvider, setGeminiModel, setMode, setInput } = useSummaryStore();
   const generator = useSummaryGenerator();
   const { paymentStatus } = useAuth();
   const setRoute = useNavigationStore((state) => state.setRoute);
@@ -35,10 +41,39 @@ export function SummaryStudio() {
   const addFile = useVaultDataStore((state) => state.addFile);
   const classroomId = selectedClassroomId ?? classrooms[0]?.id;
   const isPremiumLocked = paymentStatus !== "active";
+  const localFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [localFileName, setLocalFileName] = useState<string | null>(null);
+  const [localFileError, setLocalFileError] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      setLocalFileName(null);
+      setLocalFileError(null);
+    };
+  }, []);
 
   async function handleFileUpload(files: File[], onProgress: (fileName: string, progress: number) => void) {
     if (!classroomId) return;
     await Promise.all(files.map((file) => addFile({ classroomId, file, onProgress: (progress) => onProgress(file.name, progress) })));
+  }
+
+  async function handleLocalAiFile(file: File) {
+    setLocalFileError(null);
+    setLocalFileName(file.name);
+
+    if (file.type === "text/plain" || file.name.toLowerCase().endsWith(".txt")) {
+      const text = await file.text();
+      setInput(`${input.trim() ? `${input.trim()}\n\n` : ""}Conteudo do arquivo ${file.name}:\n${text}`.slice(0, 60000));
+      return;
+    }
+
+    setLocalFileError("Extração local automática está disponível para TXT. PDF/DOCX serão suportados com parser dedicado; por enquanto, cole o texto extraído no campo.");
+  }
+
+  function clearLocalFile() {
+    setLocalFileName(null);
+    setLocalFileError(null);
+    if (localFileInputRef.current) localFileInputRef.current.value = "";
   }
 
   return (
@@ -60,7 +95,57 @@ export function SummaryStudio() {
               </Button>
             ))}
           </div>
+          {provider === "gemini" && (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+              <label className="block text-sm font-semibold">
+                Modelo Gemini
+                <select
+                  value={geminiModel}
+                  onChange={(event) => setGeminiModel(event.target.value as GeminiModelId)}
+                  className="focus-ring mt-2 h-10 w-full rounded-lg border border-white/10 bg-vault-ink px-3 text-sm text-foreground"
+                >
+                  {geminiModels.map((item) => (
+                    <option key={item.id} value={item.id}>{item.label}</option>
+                  ))}
+                </select>
+              </label>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Em uso: {geminiModels.find((item) => item.id === geminiModel)?.label}. {geminiModels.find((item) => item.id === geminiModel)?.description}
+              </p>
+            </div>
+          )}
           <ApiKeyVault provider={provider} />
+          <div className="grid gap-3 rounded-2xl border border-vault-mint/20 bg-vault-mint/8 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="font-semibold">Arquivo temporário para IA</p>
+                <p className="mt-1 text-sm text-muted-foreground">Este arquivo será usado apenas para gerar a resposta e não será salvo.</p>
+              </div>
+              <Button variant="secondary" onClick={() => localFileInputRef.current?.click()} disabled={isPremiumLocked}>
+                <Paperclip className="h-4 w-4" />
+                Anexar local
+              </Button>
+            </div>
+            <input
+              ref={localFileInputRef}
+              type="file"
+              accept=".txt,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) void handleLocalAiFile(file);
+              }}
+            />
+            {localFileName && (
+              <div className="flex items-center justify-between gap-3 rounded-xl bg-white/8 px-3 py-2 text-sm">
+                <span className="truncate">{localFileName}</span>
+                <Button variant="ghost" size="icon" aria-label="Remover arquivo local" onClick={clearLocalFile}>
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+            {localFileError && <p className="text-sm text-amber-300">{localFileError}</p>}
+          </div>
           <FileDropzone onUpload={classroomId ? handleFileUpload : undefined} />
           <textarea
             className="focus-ring min-h-44 w-full resize-none rounded-xl border border-white/10 bg-white/[0.055] p-4 text-sm text-foreground placeholder:text-muted-foreground"
@@ -105,7 +190,7 @@ export function SummaryStudio() {
           <Button
             className="w-full"
             disabled={!input.trim() || generator.isPending || isPremiumLocked || !classroomId}
-            onClick={() => classroomId && generator.mutate({ provider, mode, input, classroomId, sourceName: "Entrada manual" })}
+            onClick={() => classroomId && generator.mutate({ provider, geminiModel, mode, input, classroomId, sourceName: localFileName ?? "Entrada manual" })}
           >
             {generator.isPending ? (
               <>

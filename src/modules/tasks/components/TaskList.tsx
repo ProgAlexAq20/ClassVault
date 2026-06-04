@@ -24,6 +24,8 @@ export function TaskList({ tasks, onEdit, onDelete }: TaskListProps) {
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [dueTime, setDueTime] = useState("");
   const [priority, setPriority] = useState<Task["priority"]>("medium");
   const [status, setStatus] = useState<Task["status"]>("todo");
   const [saving, setSaving] = useState(false);
@@ -33,6 +35,8 @@ export function TaskList({ tasks, onEdit, onDelete }: TaskListProps) {
     if (!editingTask) return;
     setTitle(editingTask.title);
     setDescription(editingTask.description);
+    setDueDate(editingTask.dueDate);
+    setDueTime(editingTask.dueTime ?? "");
     setPriority(editingTask.priority);
     setStatus(editingTask.status);
     setError(null);
@@ -43,7 +47,7 @@ export function TaskList({ tasks, onEdit, onDelete }: TaskListProps) {
     setSaving(true);
     setError(null);
     try {
-      await onEdit?.({ ...editingTask, title: title.trim(), description: description.trim(), priority, status });
+      await onEdit?.({ ...editingTask, title: title.trim(), description: description.trim(), dueDate, dueTime: dueTime || undefined, priority, status });
       setEditingTask(null);
     } catch (editError) {
       setError(editError instanceof Error ? editError.message : "Nao foi possivel salvar o trabalho.");
@@ -92,8 +96,10 @@ export function TaskList({ tasks, onEdit, onDelete }: TaskListProps) {
                 <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                   <span className="inline-flex items-center gap-1">
                     <Clock3 className="h-3.5 w-3.5" />
-                    {new Date(task.dueAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
+                    {new Date(task.dueAt).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
                   </span>
+                  {task.status !== "done" && task.dueDate === new Date().toISOString().slice(0, 10) && <span className="rounded-full bg-vault-mint/10 px-2 py-0.5 text-vault-mint">Hoje</span>}
+                  {task.status !== "done" && new Date(task.dueAt).getTime() < Date.now() && <span className="rounded-full bg-rose-400/10 px-2 py-0.5 text-rose-300">Atrasada</span>}
                   <span className={cn("font-semibold", priorityClass[task.priority])}>{task.priority}</span>
                   <span className="rounded-full bg-white/8 px-2 py-0.5">{task.status}</span>
                 </div>
@@ -135,6 +141,16 @@ export function TaskList({ tasks, onEdit, onDelete }: TaskListProps) {
                 placeholder="Detalhe requisitos, links, critérios de entrega ou próximos passos."
               />
             </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block text-sm font-semibold">
+                Data de entrega
+                <Input type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} className="mt-2" />
+              </label>
+              <label className="block text-sm font-semibold">
+                Hora
+                <Input type="time" value={dueTime} onChange={(event) => setDueTime(event.target.value)} className="mt-2" />
+              </label>
+            </div>
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="block text-sm font-semibold">
                 Prioridade

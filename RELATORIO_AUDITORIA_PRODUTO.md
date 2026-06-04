@@ -12,7 +12,11 @@
 
 ## Bugs Corrigidos
 
+- Referencia antiga a Gemini 1.5 Flash foi removida.
+- Gemini agora usa modelos 2.5 configuraveis: `gemini-2.5-flash` e `gemini-2.5-pro`.
+- CSP passou a permitir OpenAI e Groq para chamadas reais do navegador.
 - Trabalhos agora salvam `description` no Firestore e no estado local.
+- Trabalhos agora salvam `dueDate`, `dueTime`, `createdAt`, `updatedAt` e mantem `dueAt` para compatibilidade.
 - Trabalhos agora podem ser editados, incluindo titulo, descricao, prioridade e status.
 - Trabalhos agora podem ser excluidos com confirmacao.
 - Upload usa `uploadBytesResumable`, com progresso por arquivo.
@@ -24,6 +28,12 @@
 
 ## Melhorias de UX/UI
 
+- Aba IA ganhou seletor de modelo Gemini com persistencia local.
+- Aba IA exibe o modelo Gemini em uso.
+- Aba IA permite anexar arquivo local temporario para resumo.
+- Arquivos locais da IA nao sao enviados ao Firebase nem salvos no Firestore.
+- Tarefas agora sao agrupadas por Atrasadas, Hoje, Proximas e Concluidas.
+- Tarefas ganharam filtros por data/status.
 - Campo multilinha de descricao em trabalhos.
 - Cartoes de trabalhos exibem descricao longa com quebra de linha.
 - Modal moderno para editar trabalhos.
@@ -52,8 +62,15 @@
 - `src/modules/summaries/providers/openai.provider.ts`
 - `src/modules/summaries/providers/gemini.provider.ts`
 - `src/modules/summaries/providers/groq.provider.ts`
+- `src/modules/summaries/store/summary.store.ts`
+- `src/modules/summaries/types/summary.types.ts`
+- `src/shared/components/ui/button.tsx`
+- `src/shared/components/ui/card.tsx`
+- `src/shared/components/ui/dialog.tsx`
 
 ## Fluxo Final de Documentos
+
+### Documentos permanentes
 
 1. Usuario autenticado seleciona arquivos na dropzone.
 2. App valida tipo e limite de 20 MB.
@@ -66,15 +83,34 @@
 
 Observacao: o projeto precisa inicializar Firebase Storage no console para esse fluxo funcionar em producao.
 
+### Documentos temporarios da IA
+
+1. Usuario anexa arquivo local na aba IA.
+2. O arquivo nao e enviado ao Firebase.
+3. TXT e extraido localmente no navegador e anexado ao prompt.
+4. PDF/DOCX sao aceitos no seletor, mas exigem parser dedicado para extracao automatica; enquanto isso, o app orienta o usuario a colar o texto.
+5. O arquivo temporario e removido da memoria ao sair/limpar selecao.
+
 ## Fluxo Final da IA
 
 1. Usuario premium (`paymentStatus === "active"`) informa texto.
 2. Usuario salva chave local do provider no navegador.
-3. App chama provider escolhido: OpenAI, Gemini ou Groq.
-4. CSP permite os endpoints necessarios.
-5. Estado de carregamento e exibido.
-6. Erros da API sao mostrados em linguagem clara.
-7. Resultado e salvo em Firestore como resumo da conta do usuario.
+3. Usuario escolhe provider e, no caso Gemini, modelo `gemini-2.5-flash` ou `gemini-2.5-pro`.
+4. Modelo padrao: `gemini-2.5-flash`.
+5. App chama provider escolhido: OpenAI, Gemini ou Groq.
+6. CSP permite os endpoints necessarios.
+7. Estado de carregamento e exibido.
+8. Erros da API sao mostrados em linguagem clara.
+9. Resultado e salvo em Firestore como resumo da conta do usuario.
+
+## Fluxo Final das Tarefas
+
+1. Usuario cria trabalho com titulo, descricao, data e hora opcional.
+2. Firestore salva `title`, `description`, `dueDate`, `dueTime`, `dueAt`, `status`, `priority`, `ownerId`, `createdAt` e `updatedAt`.
+3. Lista agrupa por atrasadas, hoje, proximas e concluidas.
+4. Tarefa atrasada recebe indicador visual.
+5. Tarefa de hoje recebe indicador visual.
+6. Usuario pode editar ou excluir com confirmacao.
 
 ## Fluxo Final de Pagamentos
 

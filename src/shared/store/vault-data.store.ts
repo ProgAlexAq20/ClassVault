@@ -29,9 +29,11 @@ type CreateTaskInput = {
   classroomId: string;
   title: string;
   description?: string;
+  dueDate?: string;
+  dueTime?: string;
 };
 
-type EditTaskInput = Partial<Pick<Task, "title" | "description" | "dueAt" | "priority" | "status">> & {
+type EditTaskInput = Partial<Pick<Task, "title" | "description" | "dueDate" | "dueTime" | "dueAt" | "priority" | "status">> & {
   id: string;
 };
 
@@ -234,15 +236,24 @@ function taskFromData(id: string, raw: unknown): Task {
   const data = dataOf(raw);
   const priority = data.priority === "low" || data.priority === "high" ? data.priority : "medium";
   const status = data.status === "doing" || data.status === "done" ? data.status : "todo";
+  const dueAt = isString(data.dueAt) ? data.dueAt : new Date().toISOString();
+  const fallbackDate = dueAt.slice(0, 10);
   return {
     id,
     classroomId: isString(data.classroomId) ? data.classroomId : "",
     title: isString(data.title) ? data.title : "Tarefa sem titulo",
     description: isString(data.description) ? data.description : "",
-    dueAt: isString(data.dueAt) ? data.dueAt : new Date().toISOString(),
+    dueDate: isString(data.dueDate) ? data.dueDate : fallbackDate,
+    dueTime: optionalString(data.dueTime),
+    dueAt,
     priority,
     status
   };
+}
+
+function dueAtFromParts(dueDate: string, dueTime?: string) {
+  const time = dueTime?.trim() || "23:59";
+  return new Date(`${dueDate}T${time}`).toISOString();
 }
 
 function eventFromData(id: string, raw: unknown): CalendarEvent {
@@ -275,8 +286,8 @@ function fileFromData(id: string, raw: unknown): VaultFile {
     category,
     size: isString(data.size) ? data.size : "0 KB",
     createdAt: isString(data.createdAt) ? data.createdAt : new Date().toISOString(),
-    storagePath: optionalString(data.storagePath),
-    downloadUrl: optionalString(data.downloadUrl)
+    storagePath: optionalString(data.storagePath) ?? optionalString(data.path),
+    downloadUrl: optionalString(data.downloadUrl) ?? optionalString(data.url)
   };
 }
 
@@ -500,16 +511,19 @@ export const useVaultDataStore = create<VaultDataState>((set, get) => ({
       throw error;
     }
   },
-  addTask: async ({ classroomId, title, description }) => {
+  addTask: async ({ classroomId, title, description, dueDate, dueTime }) => {
     try {
       const userId = requireLoadedUserId(get().userId);
       const createdAt = new Date().toISOString();
-      const dueAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 3).toISOString();
+      const normalizedDueDate = dueDate || new Date(Date.now() + 1000 * 60 * 60 * 24 * 3).toISOString().slice(0, 10);
+      const dueAt = dueAtFromParts(normalizedDueDate, dueTime);
       const task: Task = {
         id: crypto.randomUUID(),
         classroomId,
         title: assertNonEmpty(title, "Nome da tarefa"),
         description: description?.trim() ?? "",
+        dueDate: normalizedDueDate,
+        dueTime: dueTime?.trim() || undefined,
         dueAt,
         priority: "medium",
         status: "todo"
@@ -549,7 +563,9 @@ export const useVaultDataStore = create<VaultDataState>((set, get) => ({
         ...current,
         title: input.title !== undefined ? assertNonEmpty(input.title, "Nome da tarefa") : current.title,
         description: input.description !== undefined ? input.description.trim() : current.description,
-        dueAt: input.dueAt ?? current.dueAt,
+        dueDate: input.dueDate ?? current.dueDate,
+        dueTime: input.dueTime !== undefined ? input.dueTime || undefined : current.dueTime,
+        dueAt: input.dueAt ?? dueAtFromParts(input.dueDate ?? current.dueDate, input.dueTime !== undefined ? input.dueTime : current.dueTime),
         priority: input.priority ?? current.priority,
         status: input.status ?? current.status
       };
@@ -557,6 +573,8 @@ export const useVaultDataStore = create<VaultDataState>((set, get) => ({
       await updateDoc(userDocument(userId, "tasks", input.id), {
         title: next.title,
         description: next.description,
+        dueDate: next.dueDate,
+        dueTime: next.dueTime ?? null,
         dueAt: next.dueAt,
         priority: next.priority,
         status: next.status,
@@ -676,6 +694,8 @@ export const useVaultDataStore = create<VaultDataState>((set, get) => ({
         ownerId: userId,
         mimeType,
         sizeBytes: file.size,
+        path: storagePath,
+        url: downloadUrl,
         createdAtServer: serverTimestamp(),
         updatedAtServer: serverTimestamp()
       });
