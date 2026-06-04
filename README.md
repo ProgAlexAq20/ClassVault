@@ -103,7 +103,7 @@ O projeto persiste registros de acesso dos usuários na coleção `userAccess` d
 Passos rápidos para ativar em produção:
 
 - Publique `firestore.rules` e `storage.rules` pelo Firebase CLI.
-- Configure um endpoint server-side confiável para webhooks Pix e atualize `userAccess/{uid}.paymentStatus` com Firebase Admin fora do bundle frontend.
+- Configure um endpoint server-side confiável para webhooks Pix e atualize `userAccess/{uid}.paymentStatus` com Firebase Admin fora do bundle frontend. O endpoint deve rodar com credenciais de serviço e não deve depender da autenticação do usuário no navegador.
 - Use `src/api/webhooks/pixWebhook.ts` como contrato tipado de payload/resposta para a integração serverless.
 
 Segurança:
