@@ -14,6 +14,23 @@ service cloud.firestore {
       return signedIn() && request.auth.token.admin == true;
     }
 
+    function validUserProfile(uid) {
+      return request.resource.data.uid == uid
+        && request.resource.data.keys().hasOnly([
+          'uid',
+          'email',
+          'displayName',
+          'photoURL',
+          'premiumReviewStatus',
+          'premiumReviewRequestedAt',
+          'createdAt',
+          'updatedAt',
+          'createdAtServer',
+          'updatedAtServer'
+        ])
+        && (!('premiumReviewStatus' in request.resource.data) || request.resource.data.premiumReviewStatus == 'pending');
+    }
+
     function validOwnerCreate(uid) {
       return request.resource.data.ownerId == uid;
     }
@@ -23,38 +40,44 @@ service cloud.firestore {
         && resource.data.ownerId == uid;
     }
 
-    function ownUserAccess(uid) {
-      return request.auth.uid == uid;
-    }
-
     function validPaymentStatus() {
       return request.resource.data.paymentStatus == 'beta'
         || request.resource.data.paymentStatus == 'pending'
         || request.resource.data.paymentStatus == 'active';
     }
 
-    function validOwnPaymentTransition() {
-      return request.resource.data.paymentStatus == resource.data.paymentStatus
-        || (resource.data.paymentStatus == 'beta' && request.resource.data.paymentStatus == 'pending');
+    function validUserAccess(uid) {
+      return request.resource.data.uid == uid
+        && validPaymentStatus()
+        && request.resource.data.keys().hasOnly([
+          'uid',
+          'email',
+          'displayName',
+          'photoURL',
+          'paymentStatus',
+          'isAdmin',
+          'updatedBy',
+          'createdAt',
+          'updatedAt',
+          'createdAtServer',
+          'updatedAtServer'
+        ]);
     }
 
     match /userAccess/{uid} {
-      allow get: if signedIn() && (ownUserAccess(uid) || isAdmin());
+      allow get: if isOwner(uid) || isAdmin();
       allow list: if isAdmin();
-      allow create: if signedIn()
-        && ownUserAccess(uid)
-        && request.resource.data.uid == uid
-        && request.resource.data.paymentStatus == 'beta'
-        && request.resource.data.isAdmin == isAdmin();
-      allow update: if isAdmin()
-        || (
-          signedIn()
-          && ownUserAccess(uid)
-          && request.resource.data.uid == uid
-          && request.resource.data.isAdmin == isAdmin()
-          && validPaymentStatus()
-          && validOwnPaymentTransition()
-        );
+      allow create, update: if isAdmin() && validUserAccess(uid);
+      allow delete: if isAdmin();
+    }
+
+    match /users/{uid} {
+      allow get: if isOwner(uid) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(uid) && validUserProfile(uid);
+      allow update: if isOwner(uid)
+        && validUserProfile(uid)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['uid']);
       allow delete: if false;
     }
 

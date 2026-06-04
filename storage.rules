@@ -15,7 +15,7 @@ service firebase.storage {
         && request.resource.contentType.matches('application/pdf|application/vnd.openxmlformats-officedocument.wordprocessingml.document|image/.*|text/plain');
     }
 
-    match /users/{uid}/files/{allPaths=**} {
+    match /users/{uid}/files/{fileId}/{fileName} {
       allow read: if isOwner(uid);
       allow create: if isOwner(uid) && validUpload();
       allow update: if false;

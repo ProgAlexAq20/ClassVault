@@ -718,7 +718,7 @@ export const useVaultDataStore = create<VaultDataState>((set, get) => ({
       const id = crypto.randomUUID();
       const createdAt = new Date().toISOString();
       const mimeType = file.type || "application/octet-stream";
-      const storagePath = `users/${userId}/files/${classroomId}/${id}-${safeStorageName(file.name)}`;
+      const storagePath = `users/${userId}/files/${id}/${safeStorageName(file.name)}`;
       const uploaded = await new Promise<UploadTaskSnapshot>((resolve, reject) => {
         const task = uploadBytesResumable(storageRef(requireStorage(), storagePath), file, { contentType: mimeType });
         task.on(

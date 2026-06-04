@@ -104,3 +104,114 @@ await setDoc(docRef, cleanFirestoreData({
 
 **Data:** 04/06/2026
 **Status:** ✅ Concluído e testado
+
+---
+
+# Correção - Firestore Permissions e Storage CORS
+
+## Problemas Encontrados
+
+1. O frontend ainda tentava criar/atualizar `userAccess/{uid}` com metadados do usuário e campos sensíveis como `isAdmin`/`paymentStatus`.
+2. `userAccess/{uid}` permitia escrita do próprio usuário, inclusive transição de `beta` para `pending`.
+3. O perfil editável do usuário não estava separado do documento sensível de acesso/pagamento.
+4. O caminho físico do upload no Storage não seguia o formato `users/{uid}/files/{fileId}/{fileName}`.
+5. O Firebase Storage ainda não está inicializado no projeto `classvaulte`, então o deploy de Storage rules e a aplicação de CORS dependem de ativação no Console Firebase.
+
+## Correções Aplicadas
+
+### Auth e Perfil
+
+- Login agora cria/atualiza somente `users/{uid}`.
+- `userAccess/{uid}` passou a ser somente leitura para o próprio usuário.
+- O frontend não escreve mais `paymentStatus` nem `isAdmin` como usuário comum.
+- O botão "Já paguei" registra apenas `premiumReviewStatus: "pending"` em `users/{uid}`.
+- O status premium/admin continua vindo de `userAccess/{uid}`.
+- Admin com custom claim pode alterar `userAccess/{uid}` pelo painel admin.
+
+### Firestore Rules
+
+- Adicionado match para `users/{uid}`.
+- `users/{uid}` permite leitura/escrita do próprio perfil.
+- Admin pode listar/ler perfis para busca por email.
+- `userAccess/{uid}` permite leitura do próprio usuário ou admin.
+- `userAccess/{uid}` permite escrita apenas para admin.
+- Escrita comum em `paymentStatus`/`isAdmin` foi bloqueada.
+
+### Storage
+
+- Upload agora usa o caminho:
+
+```text
+users/{uid}/files/{fileId}/{fileName}
+```
+
+- Rules de Storage foram ajustadas para permitir upload/leitura/exclusão apenas pelo dono.
+- Criado `storage.cors.json` com as origens e headers necessários.
+
+## Bucket Configurado
+
+O app está configurado com:
+
+```env
+VITE_FIREBASE_STORAGE_BUCKET=classvaulte.firebasestorage.app
+```
+
+Esse bucket está consistente com o `firebaseConfig`, mas o Firebase CLI retornou:
+
+```text
+Firebase Storage has not been set up on project 'classvaulte'.
+```
+
+É necessário abrir:
+
+```text
+https://console.firebase.google.com/project/classvaulte/storage
+```
+
+e clicar em **Get Started** antes de publicar Storage rules ou aplicar CORS.
+
+## Comandos Executados
+
+```bash
+npm run lint
+npm run build
+firebase deploy --only firestore:rules --project classvaulte
+```
+
+Resultado:
+
+- Lint: sucesso
+- Build: sucesso
+- Firestore rules: publicadas com sucesso
+- Storage rules/CORS: bloqueado até ativar Firebase Storage no Console
+
+## Comando Para Aplicar CORS
+
+Após ativar Storage no Firebase Console, aplicar:
+
+```bash
+gcloud storage buckets update gs://classvaulte.firebasestorage.app --cors-file=storage.cors.json
+```
+
+Alternativa com `gsutil`:
+
+```bash
+gsutil cors set storage.cors.json gs://classvaulte.firebasestorage.app
+```
+
+Depois publicar rules do Storage:
+
+```bash
+firebase deploy --only storage --project classvaulte
+```
+
+## Fluxo Final
+
+1. Login Google autentica no Firebase Auth.
+2. Frontend cria/atualiza perfil em `users/{uid}`.
+3. Frontend lê `userAccess/{uid}` para saber `paymentStatus` e `isAdmin`.
+4. Usuário comum não altera `paymentStatus` nem `isAdmin`.
+5. "Já paguei" registra solicitação em `users/{uid}`.
+6. Admin/backend atualiza `userAccess/{uid}.paymentStatus`.
+7. Upload salva arquivo físico no Storage em `users/{uid}/files/{fileId}/{fileName}`.
+8. Metadados do arquivo são salvos no Firestore em `users/{uid}/files/{fileId}`.

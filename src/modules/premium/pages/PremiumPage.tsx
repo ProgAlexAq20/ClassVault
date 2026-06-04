@@ -12,6 +12,7 @@ export function PremiumPage() {
   const setRoute = useNavigationStore((state) => state.setRoute);
   const [copySuccess, setCopySuccess] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
   const qrDataUrl = useMemo(
     () => `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(pixCode)}`,
     []
@@ -42,6 +43,7 @@ export function PremiumPage() {
     setSubmitError(null);
     try {
       await requestPremiumReview();
+      setReviewSubmitted(true);
     } catch (paymentError) {
       setSubmitError(paymentError instanceof Error ? paymentError.message : "Nao foi possivel registrar o pagamento.");
     }
@@ -66,7 +68,9 @@ export function PremiumPage() {
                 ? "Seu acesso premium esta ativo nesta conta. A IA completa e os recursos premium ficam liberados enquanto este status permanecer ativo no Firestore."
                 : paymentStatus === "pending"
                   ? "Seu aviso de pagamento foi registrado. Assim que o campo paymentStatus for alterado para active no Firestore, recarregue ou atualize o status aqui."
-                  : "Desbloqueie a experiência completa do ClassVault: IA premium, organização sem limites e uso permanente na sua conta."}
+                  : reviewSubmitted
+                    ? "Seu aviso foi salvo no perfil users/{uid}. O acesso premium continua protegido em userAccess/{uid} e sera liberado por admin/backend."
+                    : "Desbloqueie a experiência completa do ClassVault: IA premium, organização sem limites e uso permanente na sua conta."}
             </p>
             <div className="grid gap-4 rounded-2xl border border-white/10 bg-vault-ink/50 p-4 sm:rounded-3xl sm:p-6">
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
@@ -92,9 +96,9 @@ export function PremiumPage() {
               </div>
             )}
             <div className="flex flex-col gap-2 sm:flex-row">
-              <Button className="w-full sm:w-auto" onClick={handleAlreadyPaid} disabled={paymentStatusLoading || paymentStatus === "pending" || paymentStatus === "active"}>
+              <Button className="w-full sm:w-auto" onClick={handleAlreadyPaid} disabled={paymentStatusLoading || reviewSubmitted || paymentStatus === "pending" || paymentStatus === "active"}>
                 <CreditCard className="h-4 w-4" />
-                {paymentStatusLoading ? "Salvando..." : paymentStatus === "pending" ? "Pagamento enviado" : paymentStatus === "active" ? "Já desbloqueado" : "Já paguei"}
+                {paymentStatusLoading ? "Salvando..." : reviewSubmitted || paymentStatus === "pending" ? "Pagamento enviado" : paymentStatus === "active" ? "Já desbloqueado" : "Já paguei"}
               </Button>
               <Button variant="secondary" className="w-full sm:w-auto" onClick={() => void refreshAccess()} disabled={paymentStatusLoading}>
                 <RefreshCw className="h-4 w-4" />
@@ -139,7 +143,7 @@ export function PremiumPage() {
               <CardTitle>Boas-vindas premium</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm leading-6 text-muted-foreground">
-              <p>Após o pagamento, clique em “Já paguei” para salvar o status pending no Firestore.</p>
+              <p>Após o pagamento, clique em “Já paguei” para registrar a solicitação no perfil users/uid.</p>
               <p>A liberação manual acontece alterando userAccess/uid/paymentStatus para active.</p>
               <div className="inline-flex items-center gap-2 rounded-full border border-vault-mint/30 bg-vault-mint/5 px-3 py-2 text-xs text-vault-mint">
                 <ShieldCheck className="h-4 w-4" /> Pagamento seguro e verificado manualmente.</div>
