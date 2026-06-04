@@ -4,8 +4,10 @@ import type { SummaryRequest, SummaryResult } from "@/modules/summaries/types/su
 import { useVaultDataStore } from "@/shared/store/vault-data.store";
 
 export async function generateSummary(request: SummaryRequest): Promise<SummaryResult> {
+  if (!request.input.trim()) throw new Error("Adicione um texto ou material antes de gerar o resumo.");
+
   const apiKey = await readLocalApiKey(request.provider);
-  if (!apiKey) throw new Error("Adicione sua API key local antes de gerar o resumo.");
+  if (!apiKey) throw new Error("Salve uma API key para este provedor antes de gerar o resumo.");
 
   const content = await aiProviders[request.provider].summarize(request, apiKey);
   const savedSummary = await useVaultDataStore.getState().addSummary({

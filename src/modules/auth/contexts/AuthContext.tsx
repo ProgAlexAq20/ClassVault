@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       void applyUserAccess(currentUser)
-        .then((access) => {
+        .then(() => {
           if (!active) return;
           setUser(currentUser);
           setError(null);

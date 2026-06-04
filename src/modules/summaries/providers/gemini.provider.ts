@@ -1,5 +1,14 @@
 import type { AiProvider } from "./provider.types";
 
+async function errorMessage(response: Response) {
+  try {
+    const data = await response.json();
+    return data.error?.message ?? `Gemini retornou HTTP ${response.status}.`;
+  } catch {
+    return `Gemini retornou HTTP ${response.status}.`;
+  }
+}
+
 export const geminiProvider: AiProvider = {
   id: "gemini",
   label: "Gemini",
@@ -15,7 +24,7 @@ export const geminiProvider: AiProvider = {
       }
     );
 
-    if (!response.ok) throw new Error("Falha ao chamar Gemini");
+    if (!response.ok) throw new Error(await errorMessage(response));
     const data = await response.json();
     return data.candidates?.[0]?.content?.parts?.[0]?.text ?? "Nenhum resumo retornado.";
   }

@@ -1,5 +1,14 @@
 import type { AiProvider } from "./provider.types";
 
+async function errorMessage(response: Response) {
+  try {
+    const data = await response.json();
+    return data.error?.message ?? `OpenAI retornou HTTP ${response.status}.`;
+  } catch {
+    return `OpenAI retornou HTTP ${response.status}.`;
+  }
+}
+
 export const openAiProvider: AiProvider = {
   id: "openai",
   label: "OpenAI",
@@ -19,7 +28,7 @@ export const openAiProvider: AiProvider = {
       })
     });
 
-    if (!response.ok) throw new Error("Falha ao chamar OpenAI");
+    if (!response.ok) throw new Error(await errorMessage(response));
     const data = await response.json();
     return data.choices?.[0]?.message?.content ?? "Nenhum resumo retornado.";
   }

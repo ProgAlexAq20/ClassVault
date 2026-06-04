@@ -1,5 +1,14 @@
 import type { AiProvider } from "./provider.types";
 
+async function errorMessage(response: Response) {
+  try {
+    const data = await response.json();
+    return data.error?.message ?? `Groq retornou HTTP ${response.status}.`;
+  } catch {
+    return `Groq retornou HTTP ${response.status}.`;
+  }
+}
+
 export const groqProvider: AiProvider = {
   id: "groq",
   label: "Groq",
@@ -19,7 +28,7 @@ export const groqProvider: AiProvider = {
       })
     });
 
-    if (!response.ok) throw new Error("Falha ao chamar Groq");
+    if (!response.ok) throw new Error(await errorMessage(response));
     const data = await response.json();
     return data.choices?.[0]?.message?.content ?? "Nenhum resumo retornado.";
   }

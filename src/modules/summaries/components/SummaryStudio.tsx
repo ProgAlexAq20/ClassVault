@@ -1,4 +1,4 @@
-import { Brain, FileText, ListChecks, Sparkles, UploadCloud } from "lucide-react";
+import { AlertCircle, Brain, FileText, ListChecks, Loader2, Sparkles, UploadCloud } from "lucide-react";
 import { useSummaryGenerator } from "@/modules/summaries/hooks/use-summary-generator";
 import { ApiKeyVault } from "@/modules/summaries/components/ApiKeyVault";
 import { useSummaryStore } from "@/modules/summaries/store/summary.store";
@@ -36,9 +36,9 @@ export function SummaryStudio() {
   const classroomId = selectedClassroomId ?? classrooms[0]?.id;
   const isPremiumLocked = paymentStatus !== "active";
 
-  async function handleFileUpload(files: File[]) {
+  async function handleFileUpload(files: File[], onProgress: (fileName: string, progress: number) => void) {
     if (!classroomId) return;
-    await Promise.all(files.map((file) => addFile({ classroomId, file })));
+    await Promise.all(files.map((file) => addFile({ classroomId, file, onProgress: (progress) => onProgress(file.name, progress) })));
   }
 
   return (
@@ -93,12 +93,26 @@ export function SummaryStudio() {
             {paymentStatus === "pending" && "Pagamento registrado. Aguardando liberação para liberar o acesso premium."}
             {paymentStatus === "active" && "Acesso premium habilitado. Gere resumos com IA em sua conta."}
           </div>
+          {generator.error && (
+            <div className="flex items-start gap-3 rounded-2xl border border-rose-400/30 bg-rose-400/10 p-4 text-sm text-rose-200">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-semibold">Não foi possível gerar agora.</p>
+                <p className="mt-1">{generator.error.message}</p>
+              </div>
+            </div>
+          )}
           <Button
             className="w-full"
             disabled={!input.trim() || generator.isPending || isPremiumLocked || !classroomId}
             onClick={() => classroomId && generator.mutate({ provider, mode, input, classroomId, sourceName: "Entrada manual" })}
           >
-            {generator.isPending ? "Gerando..." : isPremiumLocked ? "Atualize para gerar" : !classroomId ? "Crie uma materia antes" : "Gerar resumo"}
+            {generator.isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Gerando...
+              </>
+            ) : isPremiumLocked ? "Atualize para gerar" : !classroomId ? "Crie uma materia antes" : "Gerar resumo"}
           </Button>
           {isPremiumLocked && (
             <Button variant="secondary" className="w-full" onClick={() => setRoute("premium")}>Ir para Premium</Button>
@@ -111,7 +125,14 @@ export function SummaryStudio() {
           <CardTitle>Resultado</CardTitle>
         </CardHeader>
         <CardContent>
-          {generator.data ? (
+          {generator.isPending ? (
+            <div className="grid min-h-72 place-items-center rounded-xl border border-white/10 bg-white/[0.035] p-6 text-center">
+              <div>
+                <Loader2 className="mx-auto h-8 w-8 animate-spin text-vault-mint" />
+                <p className="mt-3 text-sm text-muted-foreground">A IA está organizando o material. Isso pode levar alguns segundos.</p>
+              </div>
+            </div>
+          ) : generator.data ? (
             <div className="prose prose-invert max-w-none text-sm leading-7">
               <h3 className="text-lg font-semibold">{generator.data.title}</h3>
               <p className="whitespace-pre-wrap text-muted-foreground">{generator.data.content}</p>

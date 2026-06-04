@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { collection, deleteDoc, doc, getDocs, orderBy, query, serverTimestamp, setDoc, updateDoc, writeBatch } from "firebase/firestore/lite";
-import { deleteObject, getDownloadURL, ref as storageRef, uploadBytes } from "firebase/storage";
+import { deleteObject, getDownloadURL, ref as storageRef, uploadBytesResumable, type StorageReference, type UploadTaskSnapshot } from "firebase/storage";
 import type { CalendarEvent } from "@/modules/calendar/types/calendar.types";
 import type { Classroom, Lesson } from "@/modules/classrooms/types/classroom.types";
 import type { VaultFile } from "@/modules/files/types/file.types";
@@ -28,6 +28,11 @@ type CreateNoteInput = {
 type CreateTaskInput = {
   classroomId: string;
   title: string;
+  description?: string;
+};
+
+type EditTaskInput = Partial<Pick<Task, "title" | "description" | "dueAt" | "priority" | "status">> & {
+  id: string;
 };
 
 type CreateLessonInput = {
@@ -56,6 +61,7 @@ type UploadFileInput = {
   classroomId: string;
   file: File;
   category?: VaultFile["category"];
+  onProgress?: (progress: number) => void;
 };
 
 type VaultDataSnapshot = {
@@ -76,6 +82,8 @@ type VaultDataState = VaultDataSnapshot & {
   addLesson: (input: CreateLessonInput) => Promise<Lesson>;
   addNote: (input: CreateNoteInput) => Promise<Note>;
   addTask: (input: CreateTaskInput) => Promise<Task>;
+  editTask: (input: EditTaskInput) => Promise<Task>;
+  removeTask: (id: string) => Promise<void>;
   addEvent: (input: CreateEventInput) => Promise<CalendarEvent>;
   addFile: (input: UploadFileInput) => Promise<VaultFile>;
   removeFile: (id: string) => Promise<void>;
@@ -230,6 +238,7 @@ function taskFromData(id: string, raw: unknown): Task {
     id,
     classroomId: isString(data.classroomId) ? data.classroomId : "",
     title: isString(data.title) ? data.title : "Tarefa sem titulo",
+    description: isString(data.description) ? data.description : "",
     dueAt: isString(data.dueAt) ? data.dueAt : new Date().toISOString(),
     priority,
     status
@@ -491,7 +500,7 @@ export const useVaultDataStore = create<VaultDataState>((set, get) => ({
       throw error;
     }
   },
-  addTask: async ({ classroomId, title }) => {
+  addTask: async ({ classroomId, title, description }) => {
     try {
       const userId = requireLoadedUserId(get().userId);
       const createdAt = new Date().toISOString();
@@ -500,6 +509,7 @@ export const useVaultDataStore = create<VaultDataState>((set, get) => ({
         id: crypto.randomUUID(),
         classroomId,
         title: assertNonEmpty(title, "Nome da tarefa"),
+        description: description?.trim() ?? "",
         dueAt,
         priority: "medium",
         status: "todo"
@@ -525,6 +535,65 @@ export const useVaultDataStore = create<VaultDataState>((set, get) => ({
       return task;
     } catch (error) {
       logAppError("vault.addTask", error, { classroomId });
+      set({ syncError: getErrorMessage(error) });
+      throw error;
+    }
+  },
+  editTask: async (input) => {
+    try {
+      const userId = requireLoadedUserId(get().userId);
+      const current = get().tasks.find((task) => task.id === input.id);
+      if (!current) throw new Error("Trabalho nao encontrado.");
+
+      const next: Task = {
+        ...current,
+        title: input.title !== undefined ? assertNonEmpty(input.title, "Nome da tarefa") : current.title,
+        description: input.description !== undefined ? input.description.trim() : current.description,
+        dueAt: input.dueAt ?? current.dueAt,
+        priority: input.priority ?? current.priority,
+        status: input.status ?? current.status
+      };
+
+      await updateDoc(userDocument(userId, "tasks", input.id), {
+        title: next.title,
+        description: next.description,
+        dueAt: next.dueAt,
+        priority: next.priority,
+        status: next.status,
+        updatedAt: new Date().toISOString(),
+        updatedAtServer: serverTimestamp()
+      });
+
+      set((state) => ({
+        tasks: state.tasks.map((task) => (task.id === input.id ? next : task)),
+        syncError: null
+      }));
+      persistCache(get());
+      return next;
+    } catch (error) {
+      logAppError("vault.editTask", error, { taskId: input.id });
+      set({ syncError: getErrorMessage(error) });
+      throw error;
+    }
+  },
+  removeTask: async (id) => {
+    try {
+      const userId = requireLoadedUserId(get().userId);
+      const task = get().tasks.find((item) => item.id === id);
+      if (!task) throw new Error("Trabalho nao encontrado.");
+
+      await deleteDoc(userDocument(userId, "tasks", id));
+
+      set((state) => ({
+        tasks: state.tasks.filter((item) => item.id !== id),
+        classrooms: state.classrooms.map((item) =>
+          item.id === task.classroomId ? { ...item, taskCount: Math.max(0, item.taskCount - 1) } : item
+        ),
+        syncError: null
+      }));
+      persistCache(get());
+    } catch (error) {
+      logAppError("vault.removeTask", error, { taskId: id });
       set({ syncError: getErrorMessage(error) });
       throw error;
     }
@@ -565,7 +634,8 @@ export const useVaultDataStore = create<VaultDataState>((set, get) => ({
       throw error;
     }
   },
-  addFile: async ({ classroomId, file, category = "Referências" }) => {
+  addFile: async ({ classroomId, file, category = "Referências", onProgress }) => {
+    let uploadedRef: StorageReference | null = null;
     try {
       const userId = requireLoadedUserId(get().userId);
       if (file.size > 20 * 1024 * 1024) throw new Error("Arquivo acima do limite de 20 MB.");
@@ -574,8 +644,21 @@ export const useVaultDataStore = create<VaultDataState>((set, get) => ({
       const createdAt = new Date().toISOString();
       const mimeType = file.type || "application/octet-stream";
       const storagePath = `users/${userId}/files/${classroomId}/${id}-${safeStorageName(file.name)}`;
-      const uploaded = await uploadBytes(storageRef(requireStorage(), storagePath), file, { contentType: mimeType });
+      const uploaded = await new Promise<UploadTaskSnapshot>((resolve, reject) => {
+        const task = uploadBytesResumable(storageRef(requireStorage(), storagePath), file, { contentType: mimeType });
+        task.on(
+          "state_changed",
+          (snapshot) => {
+            const progress = snapshot.totalBytes ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100) : 0;
+            onProgress?.(progress);
+          },
+          reject,
+          () => resolve(task.snapshot)
+        );
+      });
+      uploadedRef = uploaded.ref;
       const downloadUrl = await getDownloadURL(uploaded.ref);
+      onProgress?.(100);
       const vaultFile: VaultFile = {
         id,
         classroomId,
@@ -607,6 +690,9 @@ export const useVaultDataStore = create<VaultDataState>((set, get) => ({
       persistCache(get());
       return vaultFile;
     } catch (error) {
+      if (uploadedRef) {
+        await deleteObject(uploadedRef).catch(() => undefined);
+      }
       logAppError("vault.addFile", error, { classroomId, fileName: file.name });
       set({ syncError: getErrorMessage(error) });
       throw error;
@@ -618,8 +704,8 @@ export const useVaultDataStore = create<VaultDataState>((set, get) => ({
       const file = get().files.find((item) => item.id === id);
       if (!file) throw new Error("Arquivo nao encontrado.");
 
-      await deleteDoc(userDocument(userId, "files", id));
       if (file.storagePath) await deleteObject(storageRef(requireStorage(), file.storagePath));
+      await deleteDoc(userDocument(userId, "files", id));
 
       set((state) => ({
         files: state.files.filter((item) => item.id !== id),

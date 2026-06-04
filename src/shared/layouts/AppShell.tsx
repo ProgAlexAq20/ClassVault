@@ -1,4 +1,4 @@
-import { Bell, Brain, CalendarDays, CheckSquare, GraduationCap, Home, Moon, Search, Settings, Sparkles, Sun, Plus, Zap, Clock, User } from "lucide-react";
+import { AlertCircle, Bell, Brain, CalendarDays, CheckSquare, GraduationCap, Home, Moon, Search, Settings, Sparkles, Sun, Plus, Zap, Clock, User } from "lucide-react";
 import React, { useState } from "react";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
@@ -73,6 +73,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const theme = useThemeStore((state) => state.theme);
   const toggleTheme = useThemeStore((state) => state.toggleTheme);
   const addQuickEntry = useVaultDataStore((state) => state.addQuickEntry);
+  const syncError = useVaultDataStore((state) => state.syncError);
   const { isAdmin } = useAuth();
   
   // Usa todos os itens de navegação (incluindo Admin) se for administrador
@@ -174,7 +175,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          <div className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</div>
+          <div className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+            {syncError && (
+              <div className="mb-5 flex items-start gap-3 rounded-2xl border border-rose-400/30 bg-rose-400/10 p-4 text-sm text-rose-200">
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div>
+                  <p className="font-semibold">Sincronização interrompida</p>
+                  <p className="mt-1">{syncError}</p>
+                </div>
+              </div>
+            )}
+            {children}
+          </div>
 
           <nav className="safe-bottom fixed inset-x-0 bottom-0 z-30 border-t border-border bg-vault-ink/90 px-2 py-2 backdrop-blur-2xl light:bg-white/90 lg:hidden">
             <div className="mx-auto grid max-w-md grid-cols-5 gap-1">

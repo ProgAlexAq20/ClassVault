@@ -25,6 +25,8 @@ export function ClassroomPage() {
   const classrooms = useVaultDataStore((state) => state.classrooms);
   const addNote = useVaultDataStore((state) => state.addNote);
   const addTask = useVaultDataStore((state) => state.addTask);
+  const editTask = useVaultDataStore((state) => state.editTask);
+  const removeTask = useVaultDataStore((state) => state.removeTask);
   const addFile = useVaultDataStore((state) => state.addFile);
   const removeFile = useVaultDataStore((state) => state.removeFile);
   const addLesson = useVaultDataStore((state) => state.addLesson);
@@ -47,6 +49,7 @@ export function ClassroomPage() {
   const [noteTitle, setNoteTitle] = useState("");
   const [notePreview, setNotePreview] = useState("");
   const [taskTitle, setTaskTitle] = useState("");
+  const [taskDescription, setTaskDescription] = useState("");
   const [lessonTitle, setLessonTitle] = useState("");
   const [lessonStartsAt, setLessonStartsAt] = useState("");
   const [lessonDescription, setLessonDescription] = useState("");
@@ -80,8 +83,9 @@ export function ClassroomPage() {
   async function handleNewTask() {
     if (!taskTitle.trim() || !classroom) return;
     try {
-      await addTask({ classroomId: classroom.id, title: taskTitle.trim() });
+      await addTask({ classroomId: classroom.id, title: taskTitle.trim(), description: taskDescription });
       setTaskTitle("");
+      setTaskDescription("");
       setTaskDialogOpen(false);
     } catch {
       // The store logs and exposes the sync error.
@@ -115,9 +119,9 @@ export function ClassroomPage() {
     }
   }
 
-  async function handleFileUpload(filesToUpload: File[]) {
+  async function handleFileUpload(filesToUpload: File[], onProgress: (fileName: string, progress: number) => void) {
     if (!classroom) return;
-    await Promise.all(filesToUpload.map((file) => addFile({ classroomId: classroom.id, file })));
+    await Promise.all(filesToUpload.map((file) => addFile({ classroomId: classroom.id, file, onProgress: (progress) => onProgress(file.name, progress) })));
   }
 
   async function handleNewLesson() {
@@ -213,7 +217,7 @@ export function ClassroomPage() {
                 <DialogDescription>Adicione uma tarefa ou trabalho para esta matéria.</DialogDescription>
                 <div className="mt-6 space-y-4">
                   <label className="block text-sm font-semibold">
-                    Nome da tarefa
+                    Nome do trabalho
                     <Input
                       value={taskTitle}
                       onChange={(e) => setTaskTitle(e.target.value)}
@@ -221,6 +225,15 @@ export function ClassroomPage() {
                       placeholder="Ex: Entregar trabalho de pesquisa"
                       autoFocus
                       className="mt-2"
+                    />
+                  </label>
+                  <label className="block text-sm font-semibold">
+                    Descrição
+                    <textarea
+                      value={taskDescription}
+                      onChange={(e) => setTaskDescription(e.target.value)}
+                      placeholder="Descreva requisitos, rubrica, anexos esperados ou próximos passos."
+                      className="focus-ring mt-2 min-h-32 w-full resize-y rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground"
                     />
                   </label>
                   <div className="flex justify-end gap-2">
@@ -321,7 +334,7 @@ export function ClassroomPage() {
         <TabsContent value="overview" className="grid gap-5 xl:grid-cols-3">
           <Card><CardHeader><CardTitle>Arquivos recentes</CardTitle></CardHeader><CardContent>{scopedFiles.length ? <FileList files={scopedFiles} onDelete={removeFile} /> : <p className="text-sm text-muted-foreground">Nenhum arquivo nesta sala.</p>}</CardContent></Card>
           <Card><CardHeader><CardTitle>Notas</CardTitle></CardHeader><CardContent>{scopedNotes.length ? <NotesList notes={scopedNotes} /> : <p className="text-sm text-muted-foreground">Nenhuma nota criada ainda.</p>}</CardContent></Card>
-          <Card><CardHeader><CardTitle>Trabalhos</CardTitle></CardHeader><CardContent>{scopedTasks.length ? <TaskList tasks={scopedTasks} /> : <p className="text-sm text-muted-foreground">Nenhum trabalho vinculado.</p>}</CardContent></Card>
+          <Card><CardHeader><CardTitle>Trabalhos</CardTitle></CardHeader><CardContent><TaskList tasks={scopedTasks} onEdit={editTask} onDelete={removeTask} /></CardContent></Card>
         </TabsContent>
         <TabsContent value="files" className="space-y-5"><FileDropzone onUpload={handleFileUpload} /><FileList files={scopedFiles} onDelete={removeFile} /></TabsContent>
         <TabsContent value="lessons" className="space-y-4">
@@ -368,7 +381,7 @@ export function ClassroomPage() {
           </div>
         </TabsContent>
         <TabsContent value="notes">{scopedNotes.length ? <NotesList notes={scopedNotes} /> : <p className="text-sm text-muted-foreground">Crie uma nota para começar a mapear sua sala.</p>}</TabsContent>
-        <TabsContent value="tasks">{scopedTasks.length ? <TaskList tasks={scopedTasks} /> : <p className="text-sm text-muted-foreground">Sem tarefas para esta sala.</p>}</TabsContent>
+        <TabsContent value="tasks"><TaskList tasks={scopedTasks} onEdit={editTask} onDelete={removeTask} /></TabsContent>
         <TabsContent value="agenda">{scopedEvents.length ? <EventTimeline events={scopedEvents} /> : <p className="text-sm text-muted-foreground">Sem eventos agendados para esta sala.</p>}</TabsContent>
         <TabsContent value="ai"><SummaryStudio /></TabsContent>
       </Tabs>
