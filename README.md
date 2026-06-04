@@ -109,3 +109,28 @@ Passos rápidos para ativar em produção:
 Segurança:
 - Use regras do Firestore para impedir que clientes ativem `paymentStatus` diretamente.
 - Proteja o endpoint do webhook com validação de assinatura do provedor de pagamento.
+
+## Testes com Emuladores (Firestore + Auth)
+
+Há scripts de teste em `firestore-samples/` para validar regras e gravações usando os emuladores do Firebase.
+
+Requisitos:
+- `firebase-tools` instalado (`npm i -g firebase-tools`) e autenticado se desejar deploy real.
+
+Rodar os emuladores e testar (comandos executáveis no workspace):
+
+1) Teste Admin (ignora regras — valida conectividade):
+```bash
+firebase emulators:exec --project classvaulte "node firestore-samples/emulator-admin-test.cjs"
+```
+
+2) Teste Cliente Autenticado (valida regras via Auth Emulator):
+```bash
+firebase emulators:exec --project classvaulte "node firestore-samples/emulator-client-auth-test.cjs"
+```
+
+Observações:
+- `firebase.json` já inclui configuração de portas para os emuladores (firestore 8085, auth 9099, hosting 5000, storage 9199).
+- Os scripts criam um usuário no Auth Emulator, obtêm um `idToken` e escrevem documentos no Firestore Emulator via REST, validando as `firestore.rules` locais.
+- Use `firebase emulators:start` para abrir o painel e inspecionar dados manualmente.
+
