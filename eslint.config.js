@@ -58,4 +58,20 @@ export default [
       'no-undef': 'off',
     },
   },
+  {
+    files: ['src/api/**/*.ts'],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: { ...globals.node },
+      parser: typescriptParser,
+      parserOptions: {
+        ecmaVersion: 2020,
+        sourceType: 'module',
+      },
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...typescript.configs.recommended.rules,
+    },
+  },
 ];

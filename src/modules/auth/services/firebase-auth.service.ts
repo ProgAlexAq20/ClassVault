@@ -8,7 +8,6 @@ import {
   type NextOrObserver,
   type User
 } from "firebase/auth";
-import { FirebaseError } from "firebase/app";
 import { collection, doc, getDoc, getDocs, query, serverTimestamp, setDoc, where, type DocumentData } from "firebase/firestore/lite";
 import type { PaymentStatus } from "@/modules/auth/types/auth.types";
 import { firebaseAuth, requireFirestore } from "@/shared/services/firebase.client";
@@ -147,15 +146,8 @@ async function loadUserProfile(uid: string): Promise<UserProfileRecord | null> {
 }
 
 async function readUserAccess(uid: string): Promise<DocumentData | null> {
-  try {
-    const snapshot = await getDoc(doc(requireFirestore(), "userAccess", uid));
-    return snapshot.exists() ? snapshot.data() : null;
-  } catch (error) {
-    if (error instanceof FirebaseError && error.code === "permission-denied") {
-      return null;
-    }
-    throw error;
-  }
+  const snapshot = await getDoc(doc(requireFirestore(), "userAccess", uid));
+  return snapshot.exists() ? snapshot.data() : null;
 }
 
 function accessFromData(uid: string, profile: UserProfileRecord | null, data: DocumentData | null, adminClaim = false): UserAccessRecord {

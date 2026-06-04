@@ -100,7 +100,7 @@ export async function handlePixWebhook(req: PixWebhookRequest, res: PixWebhookRe
   try {
     await updatePremiumStatus(uid, paymentStatus, event.email?.toLowerCase());
     res.status(202).json({ ok: true, paymentStatus, target: target ?? undefined });
-  } catch (error) {
+  } catch {
     res.status(500).json({ ok: false, error: "Erro ao atualizar status premium." });
   }
 }

@@ -5,19 +5,35 @@ service cloud.firestore {
     function signedIn() { return request.auth != null; }
     function isOwner(uid) { return signedIn() && request.auth.uid == uid; }
     function isAdmin() { return signedIn() && request.auth.token.admin == true; }
+    function hasValidDate(value) { return value is string || value is timestamp; }
+    function validOwnerCreate(uid) { return request.resource.data.ownerId == uid; }
+    function validOwnerUpdate(uid) {
+      return resource.data.ownerId == uid
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId']);
+    }
+    function validPaymentStatus() {
+      return request.resource.data.paymentStatus == 'beta'
+        || request.resource.data.paymentStatus == 'pending'
+        || request.resource.data.paymentStatus == 'active';
+    }
 
     match /users/{uid} {
-      allow create: if signedIn() && request.auth.uid == uid
-        && request.resource.data.email is string
-        && request.resource.data.createdAt is timestamp
-        && request.resource.data.updatedAt is timestamp;
-
       allow read: if isOwner(uid) || isAdmin();
-      allow update: if isOwner(uid) && request.resource.data.updatedAt is timestamp;
+      allow create: if isOwner(uid)
+        && request.resource.data.uid == uid
+        && hasValidDate(request.resource.data.createdAt)
+        && hasValidDate(request.resource.data.updatedAt)
+        && !request.resource.data.keys().hasAny(['paymentStatus', 'isAdmin']);
+      allow update: if isOwner(uid)
+        && request.resource.data.uid == uid
+        && hasValidDate(request.resource.data.updatedAt)
+        && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['uid', 'paymentStatus', 'isAdmin']);
       allow delete: if false;
 
       match /{subCollection}/{docId} {
-        allow create, read, update: if isOwner(uid) && request.resource.data.createdAt is timestamp && request.resource.data.updatedAt is timestamp;
+        allow read: if isOwner(uid);
+        allow create: if isOwner(uid) && validOwnerCreate(uid);
+        allow update: if isOwner(uid) && validOwnerUpdate(uid);
         allow delete: if isOwner(uid);
       }
     }
@@ -25,7 +41,23 @@ service cloud.firestore {
     match /userAccess/{uid} {
       allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
       allow list: if isAdmin();
-      allow create, update, delete: if isAdmin();
+      allow create, update: if isAdmin()
+        && request.resource.data.uid == uid
+        && validPaymentStatus()
+        && request.resource.data.keys().hasOnly([
+          'uid',
+          'email',
+          'displayName',
+          'photoURL',
+          'paymentStatus',
+          'isAdmin',
+          'updatedBy',
+          'createdAt',
+          'updatedAt',
+          'createdAtServer',
+          'updatedAtServer'
+        ]);
+      allow delete: if isAdmin();
     }
 
     match /{collection}/{docId} {
