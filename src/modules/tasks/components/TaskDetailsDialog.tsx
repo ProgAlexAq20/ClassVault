@@ -119,6 +119,7 @@ export function TaskDetailsDialog({ task, open, classrooms = [], onOpenChange, o
     setFeedback(null);
     try {
       const nextStatus = progress >= 100 ? "done" : status;
+      const trimmedDueTime = dueTime?.trim() || "";
       await onSave({
         ...task,
         classroomId: subjectId || task.classroomId,
@@ -126,7 +127,7 @@ export function TaskDetailsDialog({ task, open, classrooms = [], onOpenChange, o
         title: title.trim(),
         description: description.trim(),
         dueDate,
-        dueTime: dueTime || undefined,
+        dueTime: trimmedDueTime || undefined,
         priority,
         status: nextStatus,
         progress: nextStatus === "done" ? 100 : progress

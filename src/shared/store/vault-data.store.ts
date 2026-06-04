@@ -9,6 +9,7 @@ import type { SummaryResult } from "@/modules/summaries/types/summary.types";
 import type { Task } from "@/modules/tasks/types/task.types";
 import { assertNonEmpty, getErrorMessage, logAppError } from "@/shared/services/app-error";
 import { requireFirestore, requireStorage } from "@/shared/services/firebase.client";
+import { cleanFirestoreData } from "@/shared/utils/firestore-helpers";
 
 type CreateClassroomInput = {
   title: string;
@@ -482,14 +483,14 @@ export const useVaultDataStore = create<VaultDataState>((set, get) => ({
         description: description?.trim() || undefined
       };
 
-      await setDoc(userDocument(userId, "lessons", id), {
+      await setDoc(userDocument(userId, "lessons", id), cleanFirestoreData({
         ...lesson,
         ownerId: userId,
         createdAt,
         updatedAt: createdAt,
         createdAtServer: serverTimestamp(),
         updatedAtServer: serverTimestamp()
-      });
+      }));
 
       set((state) => ({
         classrooms: state.classrooms.map((item) =>
@@ -546,7 +547,8 @@ export const useVaultDataStore = create<VaultDataState>((set, get) => ({
       const userId = requireLoadedUserId(get().userId);
       const createdAt = new Date().toISOString();
       const normalizedDueDate = dueDate || localDateKey(new Date(Date.now() + 1000 * 60 * 60 * 24 * 3));
-      const dueAt = dueAtFromParts(normalizedDueDate, dueTime);
+      const normalizedDueTime = dueTime?.trim() || null;
+      const dueAt = dueAtFromParts(normalizedDueDate, normalizedDueTime || undefined);
       const normalizedProgress = status === "done" ? 100 : clampProgress(progress);
       const normalizedStatus = normalizedProgress >= 100 ? "done" : status;
       const task: Task = {
@@ -556,7 +558,7 @@ export const useVaultDataStore = create<VaultDataState>((set, get) => ({
         title: assertNonEmpty(title, "Nome da tarefa"),
         description: description?.trim() ?? "",
         dueDate: normalizedDueDate,
-        dueTime: dueTime?.trim() || undefined,
+        dueTime: normalizedDueTime || undefined,
         dueAt,
         progress: normalizedProgress,
         priority,
@@ -566,14 +568,23 @@ export const useVaultDataStore = create<VaultDataState>((set, get) => ({
         ownerId: userId
       };
 
-      await setDoc(userDocument(userId, "tasks", task.id), {
-        ...task,
+      await setDoc(userDocument(userId, "tasks", task.id), cleanFirestoreData({
+        classroomId: task.classroomId,
+        subjectId: task.subjectId,
+        title: task.title,
+        description: task.description,
+        dueDate: task.dueDate,
+        dueTime: normalizedDueTime,
+        dueAt: task.dueAt,
+        progress: task.progress,
+        priority: task.priority,
+        status: task.status,
         ownerId: userId,
         createdAt,
         updatedAt: createdAt,
         createdAtServer: serverTimestamp(),
         updatedAtServer: serverTimestamp()
-      });
+      }));
 
       set((state) => ({
         tasks: [task, ...state.tasks],
@@ -596,6 +607,7 @@ export const useVaultDataStore = create<VaultDataState>((set, get) => ({
       const current = get().tasks.find((task) => task.id === input.id);
       if (!current) throw new Error("Trabalho nao encontrado.");
 
+      const normalizedDueTime = input.dueTime !== undefined ? (input.dueTime?.trim() || null) : (current.dueTime || null);
       const next: Task = {
         ...current,
         classroomId: input.classroomId ?? current.classroomId,
@@ -603,8 +615,8 @@ export const useVaultDataStore = create<VaultDataState>((set, get) => ({
         title: input.title !== undefined ? assertNonEmpty(input.title, "Nome da tarefa") : current.title,
         description: input.description !== undefined ? input.description.trim() : current.description,
         dueDate: input.dueDate ?? current.dueDate,
-        dueTime: input.dueTime !== undefined ? input.dueTime || undefined : current.dueTime,
-        dueAt: input.dueAt ?? dueAtFromParts(input.dueDate ?? current.dueDate, input.dueTime !== undefined ? input.dueTime : current.dueTime),
+        dueTime: normalizedDueTime || undefined,
+        dueAt: input.dueAt ?? dueAtFromParts(input.dueDate ?? current.dueDate, normalizedDueTime || undefined),
         progress: input.status === "done" ? 100 : clampProgress(input.progress ?? current.progress),
         priority: input.priority ?? current.priority,
         status: input.status ?? current.status,
@@ -612,20 +624,20 @@ export const useVaultDataStore = create<VaultDataState>((set, get) => ({
       };
       if (next.progress >= 100) next.status = "done";
 
-      await updateDoc(userDocument(userId, "tasks", input.id), {
+      await updateDoc(userDocument(userId, "tasks", input.id), cleanFirestoreData({
         classroomId: next.classroomId,
         subjectId: next.subjectId ?? next.classroomId,
         title: next.title,
         description: next.description,
         dueDate: next.dueDate,
-        dueTime: next.dueTime ?? null,
+        dueTime: normalizedDueTime,
         dueAt: next.dueAt,
         progress: next.progress,
         priority: next.priority,
         status: next.status,
         updatedAt: next.updatedAt,
         updatedAtServer: serverTimestamp()
-      });
+      }));
 
       set((state) => ({
         tasks: state.tasks.map((task) => (task.id === input.id ? next : task)),
@@ -676,14 +688,14 @@ export const useVaultDataStore = create<VaultDataState>((set, get) => ({
         type
       };
 
-      await setDoc(userDocument(userId, "events", event.id), {
+      await setDoc(userDocument(userId, "events", event.id), cleanFirestoreData({
         ...event,
         ownerId: userId,
         createdAt,
         updatedAt: createdAt,
         createdAtServer: serverTimestamp(),
         updatedAtServer: serverTimestamp()
-      });
+      }));
 
       set((state) => ({
         events: [...state.events, event].sort((a, b) => a.startsAt.localeCompare(b.startsAt)),
