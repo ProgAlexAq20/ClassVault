@@ -15,6 +15,11 @@ service cloud.firestore {
       allow read: if isOwner(uid) || isAdmin();
       allow update: if isOwner(uid) && request.resource.data.updatedAt is timestamp;
       allow delete: if false;
+
+      match /{subCollection}/{docId} {
+        allow create, read, update: if isOwner(uid) && request.resource.data.createdAt is timestamp && request.resource.data.updatedAt is timestamp;
+        allow delete: if isOwner(uid);
+      }
     }
 
     match /userAccess/{uid} {
