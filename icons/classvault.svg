@@ -1,37 +1,18 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Outer rounded square background -->
-  <rect width="512" height="512" rx="112" fill="currentColor" opacity="0"/>
-  
-  <!-- Book spine (center dividing line) -->
-  <rect x="250" y="120" width="12" height="272" rx="6" fill="#333333" opacity="0.3"/>
-  
-  <!-- Left page -->
-  <path d="M120 120C120 95.147 140.147 75 165 75H244V345C244 356.046 233.046 365 222 365H165C140.147 365 120 344.853 120 320V120Z" fill="#FFFFFF" stroke="#64BC7D" stroke-width="10"/>
-  
-  <!-- Right page -->
-  <path d="M268 120V345C268 356.046 278.954 365 290 365H347C371.853 365 392 344.853 392 320V120C392 95.147 371.853 75 347 75H268V120Z" fill="#FFFFFF" stroke="#64BC7D" stroke-width="10"/>
-  
-  <!-- Green leaf/bookmark accent on left page -->
-  <g opacity="0.85">
-    <!-- Leaf stem -->
-    <path d="M190 110C190 110 190 160 195 200" stroke="#64BC7D" stroke-width="5" stroke-linecap="round" fill="none"/>
-    
-    <!-- Leaf shape -->
-    <path d="M195 110C210 95 240 85 240 120C240 155 210 180 195 200C180 180 150 155 150 120C150 85 180 95 195 110Z" fill="#64BC7D" stroke="#64BC7D" stroke-width="2.5"/>
-    
-    <!-- Leaf vein detail -->
-    <path d="M195 115C195 115 195 150 195 195" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.6"/>
+  <rect width="512" height="512" rx="112" fill="#0F1720"/>
+  <rect x="72" y="72" width="368" height="368" rx="88" fill="url(#paint0_linear)"/>
+  <g transform="translate(-30 10)">
+    <path d="M150 162C150 145.431 163.431 132 180 132H244C257.255 132 268 142.745 268 156V360C268 347.85 258.15 338 246 338H180C163.431 338 150 324.569 150 308V162Z" fill="#F8FBF7"/>
+    <path d="M278 156C278 142.745 288.745 132 302 132H332C353.539 132 372.452 143.296 383.126 160.29C337.031 169.967 300.385 198.017 278 235.972V156Z" fill="#F8FBF7"/>
+    <path d="M279 355C291.473 278.013 340.671 220.646 421 198C407.43 277.795 358.139 334.302 279 355Z" fill="#66BC73"/>
+    <path d="M325 315C348.026 287.746 372.364 263.778 399 244" stroke="#DFF5E5" stroke-width="16" stroke-linecap="round"/>
+    <path d="M180 132H219V230L199.5 215L180 230V132Z" fill="#8FCE9E"/>
   </g>
-  
-  <!-- Bookmark ribbon detail on right page -->
-  <rect x="310" y="70" width="14" height="160" rx="7" fill="#64BC7D" opacity="0.4"/>
-  
-  <!-- Text lines on pages for detail -->
-  <line x1="150" y1="180" x2="220" y2="180" stroke="#DDDDDD" stroke-width="6" stroke-linecap="round" opacity="0.7"/>
-  <line x1="150" y1="220" x2="220" y2="220" stroke="#DDDDDD" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
-  <line x1="150" y1="260" x2="220" y2="260" stroke="#DDDDDD" stroke-width="6" stroke-linecap="round" opacity="0.4"/>
-  
-  <line x1="280" y1="180" x2="350" y2="180" stroke="#DDDDDD" stroke-width="6" stroke-linecap="round" opacity="0.7"/>
-  <line x1="280" y1="220" x2="350" y2="220" stroke="#DDDDDD" stroke-width="6" stroke-linecap="round" opacity="0.5"/>
-  <line x1="280" y1="260" x2="350" y2="260" stroke="#DDDDDD" stroke-width="6" stroke-linecap="round" opacity="0.4"/>
+  <rect x="72" y="72" width="368" height="368" rx="88" stroke="#8FCE9E" stroke-width="18"/>
+  <defs>
+    <linearGradient id="paint0_linear" x1="256" y1="72" x2="256" y2="440" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1E232B"/>
+      <stop offset="1" stop-color="#102016"/>
+    </linearGradient>
+  </defs>
 </svg>
