@@ -11,9 +11,15 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_APP_ID: string;
   readonly VITE_FIREBASE_MEASUREMENT_ID: string;
   readonly VITE_ALLOWED_ORIGINS: string;
+  readonly VITE_FIREBASE_APP_CHECK_ENABLED: string;
+  readonly VITE_FIREBASE_APP_CHECK_DEBUG_TOKEN: string;
   readonly VITE_RECAPTCHA_SITE_KEY: string;
 }
 
 interface ImportMeta {
   readonly env: ImportMetaEnv;
+}
+
+interface WindowOrWorkerGlobalScope {
+  FIREBASE_APPCHECK_DEBUG_TOKEN?: string | boolean;
 }

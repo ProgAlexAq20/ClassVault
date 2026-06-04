@@ -53,6 +53,8 @@ allowedOrigins.push("http://localhost:5173", "http://localhost:5174");
 
 const origin = currentOrigin();
 const originAllowed = !origin || allowedOrigins.includes(origin);
+const appCheckEnabled = import.meta.env.VITE_FIREBASE_APP_CHECK_ENABLED === "true";
+const appCheckDebugToken = import.meta.env.VITE_FIREBASE_APP_CHECK_DEBUG_TOKEN;
 
 export const firebaseConfigError = isConfigured(firebaseConfig) && originAllowed
   ? null
@@ -60,8 +62,18 @@ export const firebaseConfigError = isConfigured(firebaseConfig) && originAllowed
 
 export const firebaseApp: FirebaseApp | null = firebaseConfigError ? null : initializeApp(firebaseConfig);
 
+if (
+  firebaseApp &&
+  appCheckEnabled &&
+  typeof window !== "undefined" &&
+  import.meta.env.DEV &&
+  appCheckDebugToken
+) {
+  self.FIREBASE_APPCHECK_DEBUG_TOKEN = appCheckDebugToken === "true" ? true : appCheckDebugToken;
+}
+
 export const firebaseAppCheck: AppCheck | null =
-  firebaseApp && typeof window !== "undefined" && import.meta.env.VITE_RECAPTCHA_SITE_KEY
+  firebaseApp && appCheckEnabled && typeof window !== "undefined" && import.meta.env.VITE_RECAPTCHA_SITE_KEY
     ? initializeAppCheck(firebaseApp, {
         provider: new ReCaptchaV3Provider(import.meta.env.VITE_RECAPTCHA_SITE_KEY),
         isTokenAutoRefreshEnabled: true
