@@ -57,4 +57,36 @@ app.post('/pixWebhook', async (req, res) => {
   }
 });
 
+app.post('/verifyRecaptcha', async (req, res) => {
+  try {
+    const token = req.body?.token;
+    const uid = req.body?.uid;
+    const scoreThreshold = Number(process.env.RECAPTCHA_SCORE_THRESHOLD || '0.5');
+
+    if (!token) return res.status(400).json({ ok: false, error: 'Missing token' });
+    if (!uid) return res.status(400).json({ ok: false, error: 'Missing uid' });
+
+    const secret = process.env.RECAPTCHA_SECRET_KEY;
+    if (!secret) return res.status(500).json({ ok: false, error: 'reCAPTCHA secret not configured' });
+
+    // Verify token with Google
+    const verifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${encodeURIComponent(secret)}&response=${encodeURIComponent(token)}`;
+    const resp = await fetch(verifyUrl, { method: 'POST' });
+    const data = await resp.json();
+    if (!data.success) return res.status(400).json({ ok: false, error: 'reCAPTCHA verification failed', detail: data });
+
+    const score = Number(data.score || 0);
+    if (score < scoreThreshold) return res.status(400).json({ ok: false, error: 'Low reCAPTCHA score', score });
+
+    initAdmin();
+    const db = admin.firestore();
+    // mark the user's request as pending for manual review
+    await db.collection('userAccess').doc(uid).set({ paymentStatus: 'pending', updatedAt: new Date().toISOString() }, { merge: true });
+    return res.status(200).json({ ok: true, score });
+  } catch (err) {
+    console.error('reCAPTCHA verification error', err);
+    return res.status(500).json({ ok: false, error: String(err) });
+  }
+});
+
 exports.pixWebhook = functions.https.onRequest(app);
