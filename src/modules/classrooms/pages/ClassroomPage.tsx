@@ -8,8 +8,10 @@ import { useFiles } from "@/modules/files/hooks/use-files";
 import { NotesList } from "@/modules/notes/components/NotesList";
 import { useNotes } from "@/modules/notes/hooks/use-notes";
 import { SummaryStudio } from "@/modules/summaries/components/SummaryStudio";
+import { localDateKey } from "@/modules/tasks/components/TaskDetailsDialog";
 import { TaskList } from "@/modules/tasks/components/TaskList";
 import { useTasks } from "@/modules/tasks/hooks/use-tasks";
+import type { Task } from "@/modules/tasks/types/task.types";
 import { useNavigationStore } from "@/shared/store/navigation.store";
 import { useVaultDataStore } from "@/shared/store/vault-data.store";
 import { BetaStatusBanner } from "@/shared/components/BetaStatusBanner";
@@ -50,8 +52,9 @@ export function ClassroomPage() {
   const [notePreview, setNotePreview] = useState("");
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDescription, setTaskDescription] = useState("");
-  const [taskDueDate, setTaskDueDate] = useState(new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString().slice(0, 10));
+  const [taskDueDate, setTaskDueDate] = useState(localDateKey(new Date(Date.now() + 1000 * 60 * 60 * 24)));
   const [taskDueTime, setTaskDueTime] = useState("");
+  const [taskPriority, setTaskPriority] = useState<Task["priority"]>("medium");
   const [lessonTitle, setLessonTitle] = useState("");
   const [lessonStartsAt, setLessonStartsAt] = useState("");
   const [lessonDescription, setLessonDescription] = useState("");
@@ -85,10 +88,11 @@ export function ClassroomPage() {
   async function handleNewTask() {
     if (!taskTitle.trim() || !classroom) return;
     try {
-      await addTask({ classroomId: classroom.id, title: taskTitle.trim(), description: taskDescription, dueDate: taskDueDate, dueTime: taskDueTime });
+      await addTask({ classroomId: classroom.id, subjectId: classroom.id, title: taskTitle.trim(), description: taskDescription, dueDate: taskDueDate, dueTime: taskDueTime, priority: taskPriority });
       setTaskTitle("");
       setTaskDescription("");
       setTaskDueTime("");
+      setTaskPriority("medium");
       setTaskDialogOpen(false);
     } catch {
       // The store logs and exposes the sync error.
@@ -180,7 +184,7 @@ export function ClassroomPage() {
               <DialogTrigger asChild>
                 <Button><NotebookPen className="h-4 w-4" /> Nota</Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-h-[92dvh] overflow-y-auto">
                 <DialogTitle>Criar nova nota</DialogTitle>
                 <DialogDescription>Adicione uma anotação para esta matéria.</DialogDescription>
                 <div className="mt-6 space-y-4">
@@ -249,7 +253,15 @@ export function ClassroomPage() {
                       <Input type="time" value={taskDueTime} onChange={(e) => setTaskDueTime(e.target.value)} className="mt-2" />
                     </label>
                   </div>
-                  <div className="flex justify-end gap-2">
+                  <label className="block text-sm font-semibold">
+                    Prioridade
+                    <select value={taskPriority} onChange={(event) => setTaskPriority(event.target.value as Task["priority"])} className="focus-ring mt-2 h-11 w-full rounded-lg border border-white/10 bg-vault-ink px-3 text-sm text-foreground">
+                      <option value="low">Baixa</option>
+                      <option value="medium">Média</option>
+                      <option value="high">Alta</option>
+                    </select>
+                  </label>
+                  <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                     <Button variant="secondary" onClick={() => setTaskDialogOpen(false)}>Cancelar</Button>
                     <Button onClick={handleNewTask} disabled={!taskTitle.trim()}>Criar trabalho</Button>
                   </div>
@@ -347,7 +359,7 @@ export function ClassroomPage() {
         <TabsContent value="overview" className="grid gap-5 xl:grid-cols-3">
           <Card><CardHeader><CardTitle>Arquivos recentes</CardTitle></CardHeader><CardContent>{scopedFiles.length ? <FileList files={scopedFiles} onDelete={removeFile} /> : <p className="text-sm text-muted-foreground">Nenhum arquivo nesta sala.</p>}</CardContent></Card>
           <Card><CardHeader><CardTitle>Notas</CardTitle></CardHeader><CardContent>{scopedNotes.length ? <NotesList notes={scopedNotes} /> : <p className="text-sm text-muted-foreground">Nenhuma nota criada ainda.</p>}</CardContent></Card>
-          <Card><CardHeader><CardTitle>Trabalhos</CardTitle></CardHeader><CardContent><TaskList tasks={scopedTasks} onEdit={editTask} onDelete={removeTask} /></CardContent></Card>
+          <Card><CardHeader><CardTitle>Trabalhos</CardTitle></CardHeader><CardContent><TaskList tasks={scopedTasks} classrooms={classrooms} onEdit={editTask} onDelete={removeTask} /></CardContent></Card>
         </TabsContent>
         <TabsContent value="files" className="space-y-5"><FileDropzone onUpload={handleFileUpload} /><FileList files={scopedFiles} onDelete={removeFile} /></TabsContent>
         <TabsContent value="lessons" className="space-y-4">
@@ -394,7 +406,7 @@ export function ClassroomPage() {
           </div>
         </TabsContent>
         <TabsContent value="notes">{scopedNotes.length ? <NotesList notes={scopedNotes} /> : <p className="text-sm text-muted-foreground">Crie uma nota para começar a mapear sua sala.</p>}</TabsContent>
-        <TabsContent value="tasks"><TaskList tasks={scopedTasks} onEdit={editTask} onDelete={removeTask} /></TabsContent>
+        <TabsContent value="tasks"><TaskList tasks={scopedTasks} classrooms={classrooms} onEdit={editTask} onDelete={removeTask} /></TabsContent>
         <TabsContent value="agenda">{scopedEvents.length ? <EventTimeline events={scopedEvents} /> : <p className="text-sm text-muted-foreground">Sem eventos agendados para esta sala.</p>}</TabsContent>
         <TabsContent value="ai"><SummaryStudio /></TabsContent>
       </Tabs>

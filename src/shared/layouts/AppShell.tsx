@@ -94,7 +94,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen overflow-hidden text-foreground">
+    <div className="min-h-screen overflow-x-hidden text-foreground">
       <div className="mx-auto flex min-h-screen w-full max-w-[1500px]">
         <aside className="hidden w-72 shrink-0 border-r border-border bg-vault-ink/55 px-5 py-6 backdrop-blur-2xl light:bg-white/85 lg:block">
           <Logo />
@@ -156,26 +156,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </aside>
 
         <main className="flex min-w-0 flex-1 flex-col">
-          <header className="sticky top-0 z-20 border-b border-border bg-background/78 px-4 py-3 backdrop-blur-2xl sm:px-6">
-            <div className="flex items-center gap-3">
-              <div className="relative flex-1">
+          <header className="sticky top-0 z-20 border-b border-border bg-background/78 px-3 py-3 backdrop-blur-2xl sm:px-6">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="relative min-w-0 flex-1">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input className="pl-9" placeholder="Buscar matérias, notas, arquivos e eventos..." />
+                <Input className="pl-9 text-xs sm:text-sm" placeholder="Buscar no ClassVault..." />
               </div>
               <StatusBadge />
-              <Button variant="secondary" size="icon" aria-label="Notificações">
+              <Button variant="secondary" size="icon" aria-label="Notificações" className="hidden sm:inline-flex">
                 <Bell className="h-4 w-4" />
               </Button>
               <Button variant="secondary" size="icon" onClick={toggleTheme} aria-label="Alternar tema">
                 {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
               </Button>
-              <Button variant="secondary" size="icon" onClick={() => setRoute("settings")} aria-label="Configurações">
+              <Button variant="secondary" size="icon" onClick={() => setRoute("settings")} aria-label="Configurações" className="hidden sm:inline-flex">
                 <Settings className="h-4 w-4" />
               </Button>
             </div>
           </header>
 
-          <div className="flex-1 px-4 py-6 sm:px-6 lg:px-8">
+          <div className="min-w-0 flex-1 px-3 py-5 sm:px-6 sm:py-6 lg:px-8">
             {syncError && (
               <div className="mb-5 flex items-start gap-3 rounded-2xl border border-rose-400/30 bg-rose-400/10 p-4 text-sm text-rose-200">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />

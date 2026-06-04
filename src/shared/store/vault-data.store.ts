@@ -27,13 +27,17 @@ type CreateNoteInput = {
 
 type CreateTaskInput = {
   classroomId: string;
+  subjectId?: string;
   title: string;
   description?: string;
   dueDate?: string;
   dueTime?: string;
+  priority?: Task["priority"];
+  status?: Task["status"];
+  progress?: number;
 };
 
-type EditTaskInput = Partial<Pick<Task, "title" | "description" | "dueDate" | "dueTime" | "dueAt" | "priority" | "status">> & {
+type EditTaskInput = Partial<Pick<Task, "title" | "description" | "dueDate" | "dueTime" | "dueAt" | "priority" | "status" | "progress" | "subjectId" | "classroomId">> & {
   id: string;
 };
 
@@ -136,6 +140,24 @@ function optionalString(value: unknown) {
   return typeof value === "string" ? value : undefined;
 }
 
+function localDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function clampProgress(value: unknown) {
+  if (typeof value !== "number" || Number.isNaN(value)) return 0;
+  return Math.min(100, Math.max(0, Math.round(value)));
+}
+
+function normalizeTaskStatus(value: unknown): Task["status"] {
+  if (value === "doing" || value === "in_progress" || value === "em andamento") return "doing";
+  if (value === "done" || value === "completed" || value === "finalizada") return "done";
+  return "todo";
+}
+
 function dataOf(value: unknown): FirestoreData {
   return value && typeof value === "object" ? (value as FirestoreData) : {};
 }
@@ -235,19 +257,27 @@ function noteFromData(id: string, raw: unknown): Note {
 function taskFromData(id: string, raw: unknown): Task {
   const data = dataOf(raw);
   const priority = data.priority === "low" || data.priority === "high" ? data.priority : "medium";
-  const status = data.status === "doing" || data.status === "done" ? data.status : "todo";
+  const status = normalizeTaskStatus(data.status);
+  const progress = status === "done" ? 100 : clampProgress(data.progress);
   const dueAt = isString(data.dueAt) ? data.dueAt : new Date().toISOString();
   const fallbackDate = dueAt.slice(0, 10);
+  const classroomId = isString(data.classroomId) ? data.classroomId : optionalString(data.subjectId) ?? "";
+  const createdAt = isString(data.createdAt) ? data.createdAt : new Date().toISOString();
   return {
     id,
-    classroomId: isString(data.classroomId) ? data.classroomId : "",
+    classroomId,
+    subjectId: optionalString(data.subjectId) ?? classroomId,
     title: isString(data.title) ? data.title : "Tarefa sem titulo",
     description: isString(data.description) ? data.description : "",
     dueDate: isString(data.dueDate) ? data.dueDate : fallbackDate,
     dueTime: optionalString(data.dueTime),
     dueAt,
+    progress,
     priority,
-    status
+    status: progress >= 100 ? "done" : status,
+    createdAt,
+    updatedAt: isString(data.updatedAt) ? data.updatedAt : createdAt,
+    ownerId: optionalString(data.ownerId)
   };
 }
 
@@ -511,22 +541,29 @@ export const useVaultDataStore = create<VaultDataState>((set, get) => ({
       throw error;
     }
   },
-  addTask: async ({ classroomId, title, description, dueDate, dueTime }) => {
+  addTask: async ({ classroomId, subjectId, title, description, dueDate, dueTime, priority = "medium", status = "todo", progress = 0 }) => {
     try {
       const userId = requireLoadedUserId(get().userId);
       const createdAt = new Date().toISOString();
-      const normalizedDueDate = dueDate || new Date(Date.now() + 1000 * 60 * 60 * 24 * 3).toISOString().slice(0, 10);
+      const normalizedDueDate = dueDate || localDateKey(new Date(Date.now() + 1000 * 60 * 60 * 24 * 3));
       const dueAt = dueAtFromParts(normalizedDueDate, dueTime);
+      const normalizedProgress = status === "done" ? 100 : clampProgress(progress);
+      const normalizedStatus = normalizedProgress >= 100 ? "done" : status;
       const task: Task = {
         id: crypto.randomUUID(),
         classroomId,
+        subjectId: subjectId ?? classroomId,
         title: assertNonEmpty(title, "Nome da tarefa"),
         description: description?.trim() ?? "",
         dueDate: normalizedDueDate,
         dueTime: dueTime?.trim() || undefined,
         dueAt,
-        priority: "medium",
-        status: "todo"
+        progress: normalizedProgress,
+        priority,
+        status: normalizedStatus,
+        createdAt,
+        updatedAt: createdAt,
+        ownerId: userId
       };
 
       await setDoc(userDocument(userId, "tasks", task.id), {
@@ -561,24 +598,32 @@ export const useVaultDataStore = create<VaultDataState>((set, get) => ({
 
       const next: Task = {
         ...current,
+        classroomId: input.classroomId ?? current.classroomId,
+        subjectId: input.subjectId !== undefined ? input.subjectId || undefined : current.subjectId,
         title: input.title !== undefined ? assertNonEmpty(input.title, "Nome da tarefa") : current.title,
         description: input.description !== undefined ? input.description.trim() : current.description,
         dueDate: input.dueDate ?? current.dueDate,
         dueTime: input.dueTime !== undefined ? input.dueTime || undefined : current.dueTime,
         dueAt: input.dueAt ?? dueAtFromParts(input.dueDate ?? current.dueDate, input.dueTime !== undefined ? input.dueTime : current.dueTime),
+        progress: input.status === "done" ? 100 : clampProgress(input.progress ?? current.progress),
         priority: input.priority ?? current.priority,
-        status: input.status ?? current.status
+        status: input.status ?? current.status,
+        updatedAt: new Date().toISOString()
       };
+      if (next.progress >= 100) next.status = "done";
 
       await updateDoc(userDocument(userId, "tasks", input.id), {
+        classroomId: next.classroomId,
+        subjectId: next.subjectId ?? next.classroomId,
         title: next.title,
         description: next.description,
         dueDate: next.dueDate,
         dueTime: next.dueTime ?? null,
         dueAt: next.dueAt,
+        progress: next.progress,
         priority: next.priority,
         status: next.status,
-        updatedAt: new Date().toISOString(),
+        updatedAt: next.updatedAt,
         updatedAtServer: serverTimestamp()
       });
 

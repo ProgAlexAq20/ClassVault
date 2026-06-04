@@ -29,6 +29,8 @@ export function DashboardPage() {
   const openClassroom = useNavigationStore((state) => state.openClassroom);
   const setRoute = useNavigationStore((state) => state.setRoute);
   const addClassroom = useVaultDataStore((state) => state.addClassroom);
+  const editTask = useVaultDataStore((state) => state.editTask);
+  const removeTask = useVaultDataStore((state) => state.removeTask);
 
   async function handleCreateClassroom() {
     const title = newTitle.trim();
@@ -66,7 +68,7 @@ export function DashboardPage() {
                 Matérias, arquivos, aulas, notas, entregas e IA organizados em salas modernas.
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Dialog open={createOpen} onOpenChange={setCreateOpen}>
                 <DialogTrigger asChild>
                   <Button><Plus className="h-4 w-4" /> Matéria</Button>
@@ -93,7 +95,7 @@ export function DashboardPage() {
                         placeholder="Ex: Prof. Mariana Silva"
                       />
                     </label>
-                    <div className="flex justify-end gap-2">
+                    <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                       <Button variant="secondary" onClick={() => setCreateOpen(false)}>Cancelar</Button>
                       <Button onClick={handleCreateClassroom}>Criar matéria</Button>
                     </div>
@@ -144,15 +146,15 @@ export function DashboardPage() {
       </section>
 
       <section className="grid gap-5 xl:grid-cols-3">
-        <Card>
+        <Card className="min-w-0">
           <CardHeader><CardTitle>Próximas entregas</CardTitle></CardHeader>
-          <CardContent>{tasks.length ? <TaskList tasks={tasks} /> : <p className="text-sm text-muted-foreground">Nenhuma tarefa adicionada ainda. Crie uma matéria para começar.</p>}</CardContent>
+          <CardContent>{tasks.length ? <TaskList tasks={tasks.slice(0, 5)} classrooms={classrooms} onEdit={editTask} onDelete={removeTask} /> : <p className="text-sm text-muted-foreground">Nenhuma tarefa adicionada ainda. Crie uma matéria para começar.</p>}</CardContent>
         </Card>
-        <Card>
+        <Card className="min-w-0">
           <CardHeader><CardTitle>Últimos arquivos</CardTitle></CardHeader>
           <CardContent>{files.length ? <FileList files={files} /> : <p className="text-sm text-muted-foreground">Armazene documentos e anotações para acompanhar o semestre.</p>}</CardContent>
         </Card>
-        <Card>
+        <Card className="min-w-0">
           <CardHeader><CardTitle>Agenda resumida</CardTitle><CalendarDays className="h-4 w-4 text-vault-mint" /></CardHeader>
           <CardContent>{events.length ? <EventTimeline events={events.slice(0, 3)} /> : <p className="text-sm text-muted-foreground">Sem eventos programados. Adicione aulas e prazos para aparecer aqui.</p>}</CardContent>
         </Card>

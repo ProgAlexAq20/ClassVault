@@ -55,7 +55,7 @@ export function PremiumPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <Card className="rounded-[2rem] border border-white/10 bg-white/5 p-8 shadow-glass backdrop-blur-2xl">
+        <Card className="rounded-2xl border border-white/10 bg-white/5 p-4 shadow-glass backdrop-blur-2xl sm:rounded-[2rem] sm:p-8">
           <div className="flex flex-col gap-4">
             <span className={`inline-flex w-fit items-center gap-2 rounded-full border px-3 py-2 text-sm font-semibold ${statusTone}`}>
               <StatusIcon className="h-4 w-4" />
@@ -68,7 +68,7 @@ export function PremiumPage() {
                   ? "Seu aviso de pagamento foi registrado. Assim que o campo paymentStatus for alterado para active no Firestore, recarregue ou atualize o status aqui."
                   : "Desbloqueie a experiência completa do ClassVault: IA premium, organização sem limites e uso permanente na sua conta."}
             </p>
-            <div className="grid gap-4 rounded-3xl border border-white/10 bg-vault-ink/50 p-6">
+            <div className="grid gap-4 rounded-2xl border border-white/10 bg-vault-ink/50 p-4 sm:rounded-3xl sm:p-6">
               <div className="flex items-center gap-3 text-sm text-muted-foreground">
                 <Sparkles className="h-5 w-5 text-vault-mint" />
                 Acesso vitalício por apenas <strong>R$ 7,99</strong>.
@@ -105,36 +105,36 @@ export function PremiumPage() {
           </div>
         </Card>
 
-        <div className="grid gap-5">
-          <Card className="rounded-[2rem] border border-white/10 bg-white/5 p-6 shadow-glass">
+        <div className="grid min-w-0 gap-5">
+          <Card className="rounded-2xl border border-white/10 bg-white/5 p-3 shadow-glass sm:rounded-[2rem] sm:p-6">
             <CardHeader>
               <CardTitle>Pagamento via Pix</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-3 rounded-3xl border border-white/10 bg-vault-ink/60 p-4">
+              <div className="grid gap-3 rounded-2xl border border-white/10 bg-vault-ink/60 p-4 sm:rounded-3xl">
                 <p className="text-sm text-muted-foreground">Chave Pix</p>
                 <p className="font-semibold break-all">5b255237-3763-4fcd-b6cc-ddc26503b670</p>
               </div>
-              <div className="grid gap-3 rounded-3xl border border-white/10 bg-white/5 p-4">
+              <div className="grid min-w-0 gap-3 rounded-2xl border border-white/10 bg-white/5 p-4 sm:rounded-3xl">
                 <p className="text-sm text-muted-foreground">Código Pix</p>
                 <pre className="whitespace-pre-wrap break-words text-sm text-foreground">{pixCode}</pre>
-                <div className="flex flex-wrap gap-2">
-                  <Button variant="secondary" onClick={handleCopy}>
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                  <Button variant="secondary" className="w-full sm:w-auto" onClick={handleCopy}>
                     <Copy className="h-4 w-4" /> {copySuccess ? "Copiado" : "Copiar código"}
                   </Button>
-                  <Button variant="ghost" onClick={() => setRoute("settings")}>Ver condições</Button>
+                  <Button variant="ghost" className="w-full sm:w-auto" onClick={() => setRoute("settings")}>Ver condições</Button>
                 </div>
               </div>
-              <div className="rounded-3xl border border-white/10 bg-white/5 p-4">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-3 sm:rounded-3xl sm:p-4">
                 {qrDataUrl ? (
-                  <img src={qrDataUrl} alt="QRCode Pix" className="mx-auto h-72 w-72 rounded-3xl object-contain" />
+                  <img src={qrDataUrl} alt="QRCode Pix" className="mx-auto aspect-square w-full max-w-72 rounded-2xl object-contain sm:rounded-3xl" />
                 ) : (
                   <div className="grid min-h-[288px] place-items-center text-sm text-muted-foreground">Carregando QRCode...</div>
                 )}
               </div>
             </CardContent>
           </Card>
-          <Card className="rounded-[2rem] border border-white/10 bg-white/5 p-6">
+          <Card className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:rounded-[2rem] sm:p-6">
             <CardHeader>
               <CardTitle>Boas-vindas premium</CardTitle>
             </CardHeader>
