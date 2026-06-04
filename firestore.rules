@@ -1,4 +1,56 @@
 rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userIdField) {
+      return request.auth != null && request.auth.uid == userIdField;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow create: if isSignedIn() && request.auth.uid == request.resource.data.userId
+        && request.resource.data.email is string
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+
+      allow read: if isSignedIn() && request.auth.uid == userId;
+
+      allow update, delete: if isSignedIn() && request.auth.uid == userId
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    // Generic rule factory for collections that belong to a user
+    match /{collection}/{docId} {
+      allow create: if isSignedIn()
+        && request.resource.data.userId is string
+        && request.auth.uid == request.resource.data.userId
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+
+      allow read: if isSignedIn() && request.auth.uid == resource.data.userId;
+
+      allow update, delete: if isSignedIn() && request.auth.uid == resource.data.userId
+        && request.resource.data.updatedAt is timestamp;
+    }
+
+    // aiMessages nested under aiMessages collection (referencing aiConversation by id)
+    match /aiMessages/{messageId} {
+      allow create: if isSignedIn()
+        && request.resource.data.aiConversationId is string
+        && request.resource.data.role is string
+        && request.resource.data.content is string
+        && request.resource.data.createdAt is timestamp
+        && request.auth.uid == request.resource.data.userId;
+
+      allow read: if isSignedIn() && request.auth.uid == resource.data.userId;
+      allow update, delete: if false; // messages are append-only by default
+    }
+  }
+}
+rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
