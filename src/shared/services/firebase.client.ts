@@ -1,5 +1,6 @@
 import { initializeApp, type FirebaseApp, type FirebaseOptions } from "firebase/app";
 import { getAnalytics, isSupported, type Analytics } from "firebase/analytics";
+import { initializeAppCheck, ReCaptchaV3Provider, type AppCheck } from "firebase/app-check";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore/lite";
 import { getStorage, type FirebaseStorage } from "firebase/storage";
@@ -58,6 +59,14 @@ export const firebaseConfigError = isConfigured(firebaseConfig) && originAllowed
   : `Firebase nao esta configurado corretamente. Verifique VITE_FIREBASE_* e VITE_ALLOWED_ORIGINS. Current origin: ${origin ?? "unknown"}`;
 
 export const firebaseApp: FirebaseApp | null = firebaseConfigError ? null : initializeApp(firebaseConfig);
+
+export const firebaseAppCheck: AppCheck | null =
+  firebaseApp && typeof window !== "undefined" && import.meta.env.VITE_RECAPTCHA_SITE_KEY
+    ? initializeAppCheck(firebaseApp, {
+        provider: new ReCaptchaV3Provider(import.meta.env.VITE_RECAPTCHA_SITE_KEY),
+        isTokenAutoRefreshEnabled: true
+      })
+    : null;
 
 export const firebaseAuth: Auth | null = firebaseApp ? getAuth(firebaseApp) : null;
 

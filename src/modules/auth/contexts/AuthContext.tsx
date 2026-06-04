@@ -111,35 +111,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       requestPremiumReview: async () => {
         if (!user) throw new Error("Sessao expirada.");
         try {
-          // execute reCAPTCHA v3 and verify on server before marking pending
-          const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY || '6LfKegstAAAAAJXG5ltSfVptrYAenRm22Pwmgqgx';
-          // attempt to get token
-          let token: string | null = null;
-          try {
-            // @ts-ignore
-            if (typeof grecaptcha !== 'undefined' && grecaptcha.execute) {
-              // @ts-ignore
-              token = await grecaptcha.execute(siteKey, { action: 'request_premium' });
-            }
-          } catch (err) {
-            // ignore and proceed — server will reject if required
-          }
-
-          const functionsBase = import.meta.env.VITE_FUNCTIONS_BASE_URL || '';
-          if (!token) throw new Error('reCAPTCHA token unavailable.');
-
-          const verifyUrl = functionsBase ? `${functionsBase}/verifyRecaptcha` : `/functions/verifyRecaptcha`;
-          const resp = await fetch(verifyUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token, uid: user.uid })
-          });
-
-          if (!resp.ok) {
-            const payload = await resp.json().catch(() => ({}));
-            throw new Error(payload?.error || 'reCAPTCHA verification failed.');
-          }
-
           const access = await requestPremiumReviewForUser(user.uid);
           setPaymentStatus(access.paymentStatus);
           setError(null);
